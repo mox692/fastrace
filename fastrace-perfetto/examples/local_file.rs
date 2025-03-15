@@ -1,13 +1,7 @@
 fn main() {
-    use std::net::SocketAddr;
-
     use fastrace::collector::Config;
     use fastrace::prelude::*;
 
-    // Initialize reporter
-    // let reporter =
-    //     fastrace_jaeger::JaegerReporter::new("127.0.0.1:6831".parse().unwrap(), "asynchronous")
-    //         .unwrap();
     let reporter = fastrace_perfetto::PerfettorReporter::new();
 
     fastrace::set_reporter(reporter, Config::default());
@@ -15,6 +9,8 @@ fn main() {
     {
         // Start tracing
         let root = Span::root("root", SpanContext::random());
+        let _g1 = root.set_local_parent();
+        let _g2 = LocalSpan::enter_with_local_parent("child2");
     }
 
     fastrace::flush();

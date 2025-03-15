@@ -13,6 +13,18 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-fastrace = { workspace = true }
+fastrace = { path = "../fastrace", features = ["enable"] }
+prost = "=0.13.2"
+prost-derive = "=0.13.2"
+bytes = "1.10"
+thread-id = "4.2.1"
 
 [dev-dependencies]
+
+[build-dependencies]
+# we need to fix the version to match our msrv
+prost-build = "=0.13.2"
+
+# protobuf compilation issue
+[target.'cfg(not(target_os = "windows"))'.build-dependencies]
+protobuf-src = "2.1"
