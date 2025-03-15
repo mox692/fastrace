@@ -31,6 +31,8 @@ use std::{
 // }
 
 thread_local! {
+    /// Note that this ID will be used throughout the rest of the program,
+    /// even if Reporter instance would be changed in the middle.
     static TRACK_UUID: AtomicU64 = {
         let now = SystemTime::now();
         let duration = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
@@ -47,6 +49,7 @@ fn get_track_uuid() -> u64 {
 
 static PROCESS_DESCRIPTOR_SENT: AtomicBool = AtomicBool::new(false);
 
+/// PerfettorReporter.
 pub struct PerfettorReporter {
     output: File,
 }
@@ -57,8 +60,6 @@ impl PerfettorReporter {
             output: File::create(path.as_ref()).unwrap(),
         }
     }
-    /// Stop tracing.
-    pub fn stop(&mut self) {}
 }
 
 /// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#TrackEvent
@@ -86,21 +87,17 @@ fn create_process_descriptor(pid: i32) -> ProcessDescriptor {
 /// Docs https://perfetto.dev/docs/reference/trace-packet-proto#TrackDescriptor
 fn create_track_descriptor(
     uuid: Option<u64>,
-    parent_uuid: Option<u64>,
     name: Option<impl AsRef<str>>,
     process: Option<ProcessDescriptor>,
     thread: Option<ThreadDescriptor>,
-    counter: Option<CounterDescriptor>,
 ) -> TrackDescriptor {
     let mut desc = TrackDescriptor::default();
     desc.uuid = uuid;
-    desc.parent_uuid = parent_uuid;
     desc.static_or_dynamic_name = name
         .map(|s| s.as_ref().to_string())
         .map(StaticOrDynamicName::Name);
     desc.process = process;
     desc.thread = thread;
-    desc.counter = counter;
     desc
 }
 
@@ -115,19 +112,15 @@ fn create_thread_descriptor(pid: i32) -> ThreadDescriptor {
 fn append_thread_descriptor(trace: &mut Trace) {
     let thread_first_frame_sent =
         THREAD_DESCRIPTOR_SENT.with(|v| v.fetch_or(true, Ordering::SeqCst));
-    let thread_track_uuid = get_track_uuid();
     if !thread_first_frame_sent {
         let mut packet = TracePacket::default();
-        packet.optional_trusted_uid = Some(OptionalTrustedUid::TrustedUid(32));
         let pid = std::process::id() as i32;
         let thread = create_thread_descriptor(pid).into();
         let track_desc = create_track_descriptor(
-            thread_track_uuid.into(),
-            Some(32),
+            get_track_uuid().into(),
             std::thread::current().name(),
             Some(create_process_descriptor(pid)),
             thread,
-            None,
         );
         packet.data = Some(Data::TrackDescriptor(track_desc));
         trace.packet.push(packet);
@@ -138,10 +131,9 @@ fn append_process_descriptor(trace: &mut Trace) {
     let process_first_frame_sent = PROCESS_DESCRIPTOR_SENT.fetch_or(true, Ordering::SeqCst);
     if !process_first_frame_sent {
         let mut packet = TracePacket::default();
-        packet.optional_trusted_uid = Some(OptionalTrustedUid::TrustedUid(32));
         let pid = std::process::id() as i32;
         let process = create_process_descriptor(pid).into();
-        let track_desc = create_track_descriptor(Some(32), None, None::<&str>, process, None, None);
+        let track_desc = create_track_descriptor(Some(32), None::<&str>, process, None);
         packet.data = Some(Data::TrackDescriptor(track_desc));
         trace.packet.push(packet);
     }
