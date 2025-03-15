@@ -1,0 +1,18 @@
+[package]
+name = "fastrace-perfetto"
+version = "0.1.0"
+
+categories = ["development-tools::debugging"]
+description = "Perfetto reporter for fastrace"
+keywords = ["tracing", "span", "perfetto"]
+readme = "README.md"
+
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+fastrace = { workspace = true }
+
+[dev-dependencies]
