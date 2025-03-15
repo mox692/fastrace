@@ -16,6 +16,8 @@ use perfetto_protos::{
     CounterDescriptor, ProcessDescriptor, ThreadDescriptor, Trace, TracePacket, TrackDescriptor,
     TrackEvent,
 };
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use std::{
     fs::File,
     io::Write,
@@ -29,8 +31,18 @@ use std::{
 // }
 
 thread_local! {
-    static THREAD_TRACK_UUID: AtomicU64 = AtomicU64::new(123);
+    static TRACK_UUID: AtomicU64 = {
+        let now = SystemTime::now();
+        let duration = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+        let seed = duration.as_nanos() as u64;
+
+        AtomicU64::new(seed)
+    };
     static THREAD_DESCRIPTOR_SENT: AtomicBool = AtomicBool::new(false);
+}
+
+fn get_track_uuid() -> u64 {
+    TRACK_UUID.with(|id| id.load(Ordering::Relaxed))
 }
 
 static PROCESS_DESCRIPTOR_SENT: AtomicBool = AtomicBool::new(false);
@@ -45,29 +57,33 @@ impl PerfettorReporter {
             output: File::create(path.as_ref()).unwrap(),
         }
     }
+    /// Stop tracing.
+    pub fn stop(&mut self) {}
 }
-fn create_event(
+
+/// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#TrackEvent
+fn create_track_event(
     name: Option<String>,
     track_uuid: u64,
     r#type: Option<track_event::Type>,
 ) -> TrackEvent {
     let mut event = TrackEvent::default();
-
     event.track_uuid = Some(track_uuid);
     event.name_field = name.map(NameField::Name);
-    if let Some(t) = r#type {
-        event.set_type(t);
-    }
+    event.r#type = r#type.map(|typ| typ.into());
 
     event
 }
 
+/// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#ProcessDescriptor
 fn create_process_descriptor(pid: i32) -> ProcessDescriptor {
     let mut process = ProcessDescriptor::default();
     process.pid = Some(pid);
+
     process
 }
 
+/// Docs https://perfetto.dev/docs/reference/trace-packet-proto#TrackDescriptor
 fn create_track_descriptor(
     uuid: Option<u64>,
     parent_uuid: Option<u64>,
@@ -99,7 +115,7 @@ fn create_thread_descriptor(pid: i32) -> ThreadDescriptor {
 fn append_thread_descriptor(trace: &mut Trace) {
     let thread_first_frame_sent =
         THREAD_DESCRIPTOR_SENT.with(|v| v.fetch_or(true, Ordering::SeqCst));
-    let thread_track_uuid = THREAD_TRACK_UUID.with(|id| id.load(Ordering::Relaxed));
+    let thread_track_uuid = get_track_uuid();
     if !thread_first_frame_sent {
         let mut packet = TracePacket::default();
         packet.optional_trusted_uid = Some(OptionalTrustedUid::TrustedUid(32));
@@ -162,11 +178,11 @@ impl Reporter for PerfettorReporter {
             let mut start_packet = TracePacket::default();
 
             // common data
-            let thread_track_uuid = THREAD_TRACK_UUID.with(|id| id.load(Ordering::Relaxed));
+            let thread_track_uuid = get_track_uuid();
             let pid = std::process::id() as i32;
 
             // data
-            let event = create_event(
+            let event = create_track_event(
                 Some(span.name.into_owned()),
                 thread_track_uuid,
                 Some(track_event::Type::SliceBegin),
@@ -189,7 +205,8 @@ impl Reporter for PerfettorReporter {
             let mut end_packet = TracePacket::default();
 
             // data
-            let event = create_event(None, thread_track_uuid, Some(track_event::Type::SliceEnd));
+            let event =
+                create_track_event(None, thread_track_uuid, Some(track_event::Type::SliceEnd));
             end_packet.data = Some(Data::TrackEvent(event));
             end_packet.trusted_pid = Some(pid);
             end_packet.timestamp = Some(span.begin_time_unix_ns + span.duration_ns);
