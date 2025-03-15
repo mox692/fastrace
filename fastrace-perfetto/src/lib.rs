@@ -123,6 +123,10 @@ fn append_thread_descriptor(trace: &mut Trace) {
             thread,
         );
         packet.data = Some(Data::TrackDescriptor(track_desc));
+
+        // we should insert this packet first, or at least after process discriptor
+        debug_assert!(trace.packet.len() == 0);
+
         trace.packet.push(packet);
     }
 }
@@ -133,8 +137,13 @@ fn append_process_descriptor(trace: &mut Trace) {
         let mut packet = TracePacket::default();
         let pid = std::process::id() as i32;
         let process = create_process_descriptor(pid).into();
-        let track_desc = create_track_descriptor(Some(32), None::<&str>, process, None);
+        let track_desc =
+            create_track_descriptor(get_track_uuid().into(), None::<&str>, process, None);
         packet.data = Some(Data::TrackDescriptor(track_desc));
+
+        // we should insert this packet first
+        debug_assert!(trace.packet.len() == 0);
+
         trace.packet.push(packet);
     }
 }
