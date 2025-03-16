@@ -5,58 +5,51 @@ use bytes::BytesMut;
 use fastrace::collector::Reporter;
 use fastrace::prelude::*;
 use prost::Message;
-
+use std::{
+    fs::File,
+    io::Write,
+    path::Path,
+    sync::atomic::{AtomicBool, Ordering},
+    time::{SystemTime, UNIX_EPOCH},
+};
 pub mod config;
 mod perfetto_protos;
-
 use perfetto_protos::{
     trace_packet::{Data, OptionalTrustedPacketSequenceId, OptionalTrustedUid},
     track_descriptor::StaticOrDynamicName,
     track_event::{self, NameField},
     ProcessDescriptor, ThreadDescriptor, Trace, TracePacket, TrackDescriptor, TrackEvent,
 };
-use std::time::{SystemTime, UNIX_EPOCH};
-
-use std::{
-    fs::File,
-    io::Write,
-    path::Path,
-    sync::atomic::{AtomicBool, AtomicU64, Ordering},
-};
-
-// TODO: comment in
-// mod idl {
-//     include!(concat!(env!("OUT_DIR"), "/perfetto.protos.rs"));
-// }
 
 thread_local! {
-    /// Note that this ID will be used throughout the rest of the program,
-    /// even if Reporter instance would be changed in the middle.
-    static TRACK_UUID: AtomicU64 = {
-        let now = SystemTime::now();
-        let duration = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
-        let seed = duration.as_nanos() as u64;
-
-        AtomicU64::new(seed)
-    };
+    /// Unique identifier for the track associated with the current thread.
+    static TRACK_UUID: u64 = generate_track_uuid();
+    /// Indicator whether the thread descriptor has been sent.
     static THREAD_DESCRIPTOR_SENT: AtomicBool = AtomicBool::new(false);
 }
 
-fn get_track_uuid() -> u64 {
-    TRACK_UUID.with(|id| id.load(Ordering::Relaxed))
-}
-
+/// Static indicator whether the process descriptor has been sent.
 static PROCESS_DESCRIPTOR_SENT: AtomicBool = AtomicBool::new(false);
 
-/// PerfettorReporter.
-pub struct PerfettorReporter {
+fn generate_track_uuid() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_nanos() as u64
+}
+
+fn get_track_uuid() -> u64 {
+    TRACK_UUID.with(|id| *id)
+}
+/// Reporter implementation for Perfetto tracing.
+pub struct PerfettoReporter {
     output: File,
 }
 
-impl PerfettorReporter {
+impl PerfettoReporter {
     pub fn new(path: impl AsRef<Path>) -> Self {
         Self {
-            output: File::create(path.as_ref()).unwrap(),
+            output: File::create(path.as_ref()).expect("Failed to create output file"),
         }
     }
 }
@@ -65,164 +58,146 @@ impl PerfettorReporter {
 fn create_track_event(
     name: Option<String>,
     track_uuid: u64,
-    r#type: Option<track_event::Type>,
+    event_type: Option<track_event::Type>,
 ) -> TrackEvent {
-    let mut event = TrackEvent::default();
-    event.track_uuid = Some(track_uuid);
-    event.name_field = name.map(NameField::Name);
-    event.r#type = r#type.map(|typ| typ.into());
-
-    event
+    TrackEvent {
+        track_uuid: Some(track_uuid),
+        name_field: name.map(NameField::Name),
+        r#type: event_type.map(|typ| typ.into()),
+        ..Default::default()
+    }
 }
 
 /// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#ProcessDescriptor
 fn create_process_descriptor(pid: i32) -> ProcessDescriptor {
-    let mut process = ProcessDescriptor::default();
-    process.pid = Some(pid);
-
-    process
+    ProcessDescriptor {
+        pid: Some(pid),
+        ..Default::default()
+    }
 }
 
 /// Docs https://perfetto.dev/docs/reference/trace-packet-proto#TrackDescriptor
 fn create_track_descriptor(
-    uuid: Option<u64>,
+    uuid: u64,
     name: Option<impl AsRef<str>>,
     process: Option<ProcessDescriptor>,
     thread: Option<ThreadDescriptor>,
 ) -> TrackDescriptor {
-    let mut desc = TrackDescriptor::default();
-    desc.uuid = uuid;
-    desc.static_or_dynamic_name = name
-        .map(|s| s.as_ref().to_string())
-        .map(StaticOrDynamicName::Name);
-    desc.process = process;
-    desc.thread = thread;
-    desc
+    TrackDescriptor {
+        uuid: Some(uuid),
+        static_or_dynamic_name: name.map(|s| StaticOrDynamicName::Name(s.as_ref().to_string())),
+        process,
+        thread,
+        ..Default::default()
+    }
 }
 
 fn create_thread_descriptor(pid: i32) -> ThreadDescriptor {
-    let mut thread = ThreadDescriptor::default();
-    thread.pid = Some(pid);
-    thread.tid = Some(thread_id::get() as _);
-    thread.thread_name = std::thread::current().name().map(|n| n.to_string());
-    thread
+    ThreadDescriptor {
+        pid: Some(pid),
+        tid: Some(thread_id::get() as i32),
+        thread_name: std::thread::current().name().map(|n| n.to_string()),
+        ..Default::default()
+    }
 }
 
+/// Appends a thread descriptor packet to the trace if not already sent.
 fn append_thread_descriptor(trace: &mut Trace) {
-    let thread_first_frame_sent =
-        THREAD_DESCRIPTOR_SENT.with(|v| v.fetch_or(true, Ordering::SeqCst));
-    if !thread_first_frame_sent {
-        let mut packet = TracePacket::default();
+    let descriptor_sent = THREAD_DESCRIPTOR_SENT.with(|v| v.swap(true, Ordering::SeqCst));
+    if !descriptor_sent {
         let pid = std::process::id() as i32;
-        let thread = create_thread_descriptor(pid).into();
-        let track_desc = create_track_descriptor(
-            get_track_uuid().into(),
+        let track_uuid = get_track_uuid();
+        let thread_descriptor = create_thread_descriptor(pid);
+        let track_descriptor = create_track_descriptor(
+            track_uuid,
             std::thread::current().name(),
             Some(create_process_descriptor(pid)),
-            thread,
+            Some(thread_descriptor),
         );
-        packet.data = Some(Data::TrackDescriptor(track_desc));
-        // TODO: do we need this?
-        packet.optional_trusted_uid = Some(OptionalTrustedUid::TrustedUid(42));
-
-        // we should insert this packet first, or at least after process discriptor
-        debug_assert!(trace.packet.len() == 0);
-
-        trace.packet.push(packet);
+        let packet = TracePacket {
+            data: Some(Data::TrackDescriptor(track_descriptor)),
+            optional_trusted_uid: Some(OptionalTrustedUid::TrustedUid(42)),
+            ..Default::default()
+        };
+        // Insert the packet at the beginning if needed
+        trace.packet.insert(0, packet);
     }
 }
 
+/// Appends a process descriptor packet to the trace if not already sent.
 fn append_process_descriptor(trace: &mut Trace) {
-    let process_first_frame_sent = PROCESS_DESCRIPTOR_SENT.fetch_or(true, Ordering::SeqCst);
-    if !process_first_frame_sent {
-        let mut packet = TracePacket::default();
+    let descriptor_sent = PROCESS_DESCRIPTOR_SENT.swap(true, Ordering::SeqCst);
+    if !descriptor_sent {
         let pid = std::process::id() as i32;
-        let process = create_process_descriptor(pid).into();
-        let track_desc =
-            create_track_descriptor(get_track_uuid().into(), None::<&str>, process, None);
-        packet.data = Some(Data::TrackDescriptor(track_desc));
-        // TODO: do we need this?
-        packet.optional_trusted_uid = Some(OptionalTrustedUid::TrustedUid(42));
-
-        // we should insert this packet first
-        debug_assert!(trace.packet.len() == 0);
-
-        trace.packet.push(packet);
+        let track_uuid = get_track_uuid();
+        let process_descriptor = create_process_descriptor(pid);
+        let track_descriptor =
+            create_track_descriptor(track_uuid, None::<&str>, Some(process_descriptor), None);
+        let packet = TracePacket {
+            data: Some(Data::TrackDescriptor(track_descriptor)),
+            optional_trusted_uid: Some(OptionalTrustedUid::TrustedUid(42)),
+            ..Default::default()
+        };
+        // Insert the packet at the beginning
+        trace.packet.insert(0, packet);
     }
 }
 
-fn write_log(trace: Trace, output: &mut File) {
+/// Writes the trace to the output file.
+fn write_trace(trace: &Trace, output: &mut File) {
     let mut buf = BytesMut::new();
-
-    for p in &trace.packet {
-        println!("packet: {:?}", &p);
-    }
-
-    let Ok(_) = trace.encode(&mut buf) else {
-        return;
-    };
-
-    output.write_all(buf.iter().as_slice()).unwrap();
+    trace.encode(&mut buf).unwrap();
+    output.write_all(&buf).unwrap();
     output.flush().unwrap()
 }
 
-impl Reporter for PerfettorReporter {
+impl Reporter for PerfettoReporter {
     fn report(&mut self, spans: Vec<SpanRecord>) {
         let mut trace = Trace::default();
 
+        // Ensure process and thread descriptors are sent
         append_process_descriptor(&mut trace);
         append_thread_descriptor(&mut trace);
 
+        let pid = std::process::id() as i32;
+        let thread_track_uuid = get_track_uuid();
         for span in spans {
-            //
-            // start event
-            //
+            let sequence_id = 42; // Replace with actual sequence ID if available
 
-            // serialize
-            let mut start_packet = TracePacket::default();
-
-            // common data
-            let thread_track_uuid = get_track_uuid();
-            let pid = std::process::id() as i32;
-
-            // data
-            let event = create_track_event(
+            // Start event packet
+            let start_event = create_track_event(
                 Some(span.name.into_owned()),
                 thread_track_uuid,
                 Some(track_event::Type::SliceBegin),
             );
-            start_packet.data = Some(Data::TrackEvent(event));
-            start_packet.trusted_pid = Some(pid);
-            start_packet.timestamp = Some(span.begin_time_unix_ns);
-            start_packet.optional_trusted_packet_sequence_id =
-                Some(OptionalTrustedPacketSequenceId::TrustedPacketSequenceId(
-                    // self.sequence_id.get() as _,
-                    42,
-                ));
+            let start_packet = TracePacket {
+                data: Some(Data::TrackEvent(start_event)),
+                trusted_pid: Some(pid),
+                timestamp: Some(span.begin_time_unix_ns),
+                optional_trusted_packet_sequence_id: Some(
+                    OptionalTrustedPacketSequenceId::TrustedPacketSequenceId(sequence_id),
+                ),
+                ..Default::default()
+            };
 
             trace.packet.push(start_packet);
 
-            //
-            // end event
-            //
-            // serialize
-            let mut end_packet = TracePacket::default();
-
-            // data
-            let event =
+            // End event packet
+            let end_event =
                 create_track_event(None, thread_track_uuid, Some(track_event::Type::SliceEnd));
-            end_packet.data = Some(Data::TrackEvent(event));
-            end_packet.trusted_pid = Some(pid);
-            end_packet.timestamp = Some(span.begin_time_unix_ns + span.duration_ns);
-            end_packet.optional_trusted_packet_sequence_id =
-                Some(OptionalTrustedPacketSequenceId::TrustedPacketSequenceId(
-                    // self.sequence_id.get() as _,
-                    42,
-                ));
+            let end_packet = TracePacket {
+                data: Some(Data::TrackEvent(end_event)),
+                trusted_pid: Some(pid),
+                timestamp: Some(span.begin_time_unix_ns + span.duration_ns),
+                optional_trusted_packet_sequence_id: Some(
+                    OptionalTrustedPacketSequenceId::TrustedPacketSequenceId(sequence_id),
+                ),
+                ..Default::default()
+            };
 
             trace.packet.push(end_packet);
         }
 
-        write_log(trace, &mut self.output);
+        write_trace(&trace, &mut self.output);
     }
 }
