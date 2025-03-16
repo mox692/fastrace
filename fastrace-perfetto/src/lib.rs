@@ -18,6 +18,7 @@ use std::{
 };
 pub mod config;
 mod perfetto_protos;
+mod utils;
 use perfetto_protos::{
     trace_packet::{Data, OptionalTrustedPacketSequenceId, OptionalTrustedUid},
     track_descriptor::StaticOrDynamicName,
@@ -32,7 +33,6 @@ thread_local! {
     /// Indicator whether the thread descriptor has been sent.
     static THREAD_DESCRIPTOR_SENT: AtomicBool = AtomicBool::new(false);
 }
-type ThreadName = &'static str;
 static TRACK_MAP: OnceLock<RwLock<HashMap<u64, ThreadInfo>>> = OnceLock::new();
 static DESCRIPTOR_INITIALIZED: OnceLock<RwLock<HashSet<u64>>> = OnceLock::new();
 static THREAD_COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -44,9 +44,7 @@ struct ThreadInfo {
 
 // TODO: implement drop to cleanup leaked buffer.
 struct TlsData {
-    track_uuid: u64,
     track_uuid_str: &'static str,
-    thread_name: ThreadName,
 }
 
 impl TlsData {
@@ -70,20 +68,12 @@ impl TlsData {
             track_uuid,
             ThreadInfo {
                 thread_id: thread_id::get(),
-                thread_name: thread_name,
+                thread_name,
             },
         );
 
-        Self {
-            track_uuid,
-            track_uuid_str,
-            thread_name,
-        }
+        Self { track_uuid_str }
     }
-}
-
-fn track_uuid() -> u64 {
-    TLS_DATA.with(|data| data.track_uuid)
 }
 
 fn track_uuid_str() -> &'static str {
@@ -96,14 +86,12 @@ static PROCESS_DESCRIPTOR_SENT: AtomicBool = AtomicBool::new(false);
 /// Reporter implementation for Perfetto tracing.
 pub struct PerfettoReporter {
     output: File,
-    track_map: RwLock<HashMap<u64, &'static str>>,
 }
 
 impl PerfettoReporter {
     pub fn new(path: impl AsRef<Path>) -> Self {
         Self {
             output: File::create(path.as_ref()).expect("Failed to create output file"),
-            track_map: RwLock::new(HashMap::new()),
         }
     }
 }
