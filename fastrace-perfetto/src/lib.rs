@@ -13,8 +13,7 @@ use perfetto_protos::{
     trace_packet::{Data, OptionalTrustedPacketSequenceId, OptionalTrustedUid},
     track_descriptor::StaticOrDynamicName,
     track_event::{self, NameField},
-    CounterDescriptor, ProcessDescriptor, ThreadDescriptor, Trace, TracePacket, TrackDescriptor,
-    TrackEvent,
+    ProcessDescriptor, ThreadDescriptor, Trace, TracePacket, TrackDescriptor, TrackEvent,
 };
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -123,6 +122,8 @@ fn append_thread_descriptor(trace: &mut Trace) {
             thread,
         );
         packet.data = Some(Data::TrackDescriptor(track_desc));
+        // TODO: do we need this?
+        packet.optional_trusted_uid = Some(OptionalTrustedUid::TrustedUid(42));
 
         // we should insert this packet first, or at least after process discriptor
         debug_assert!(trace.packet.len() == 0);
@@ -140,6 +141,8 @@ fn append_process_descriptor(trace: &mut Trace) {
         let track_desc =
             create_track_descriptor(get_track_uuid().into(), None::<&str>, process, None);
         packet.data = Some(Data::TrackDescriptor(track_desc));
+        // TODO: do we need this?
+        packet.optional_trusted_uid = Some(OptionalTrustedUid::TrustedUid(42));
 
         // we should insert this packet first
         debug_assert!(trace.packet.len() == 0);
