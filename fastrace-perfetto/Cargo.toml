@@ -14,8 +14,8 @@ rust-version.workspace = true
 
 [dependencies]
 fastrace = { path = "../fastrace", features = ["enable"] }
-prost = "=0.13.2"
-prost-derive = "=0.13.2"
+prost = "0.13.5"
+prost-derive = "0.13.5"
 bytes = "1.10"
 thread-id = "4.2.1"
 
