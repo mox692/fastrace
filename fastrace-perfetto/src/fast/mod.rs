@@ -61,10 +61,14 @@
 ///   * それぞれのスレッドがpushすべきか, reporter threadがpullしに行くか
 ///
 pub mod object_pool;
+pub mod spsc;
 use fastant::Instant;
-use object_pool::{Pool, Puller, Reusable};
-use once_cell::sync::Lazy;
-use std::cell::RefCell;
+use spsc::{Receiver, Sender};
+use std::{
+    cell::{RefCell, UnsafeCell},
+    rc::Rc,
+    sync::Mutex,
+};
 
 pub enum SpanType {
     RunTask = 0,
@@ -99,64 +103,137 @@ pub struct RawSpan {
 
 /// A span. This should be dropped in the same therad.
 pub struct Span {
-    inner: RawSpan,
-    // handle: LocalSpansHandle,
+    inner: Option<RawSpan>,
+    span_queue_handle: Rc<RefCell<SpanQueue>>,
 }
 
 fn span(typ: Type, thread_id: u64) -> Span {
-    Span {
-        inner: RawSpan {
+    with_span_queue(|span_queue| Span {
+        inner: Some(RawSpan {
             typ,
             thread_id,
             start: Instant::now(),
             end: Instant::ZERO,
-        },
-    }
+        }),
+        span_queue_handle: span_queue.clone(),
+    })
 }
 
 impl Drop for Span {
     fn drop(&mut self) {
-        self.inner.end = Instant::now();
+        let Some(mut span) = self.inner.take() else {
+            return;
+        };
+        span.end = Instant::now();
+        self.span_queue_handle.borrow_mut().push(span);
     }
 }
 
 /// Each thread has their own `LocalSpans` in TLS.
 pub struct SpanQueue {
-    spans: RawSpans,
+    spans: Vec<RawSpan>,
 }
 
+const DEFAULT_BATCH_SIZE: usize = 16384;
 impl SpanQueue {
     fn new() -> Self {
         Self {
-            spans: RawSpans::default(),
+            spans: Vec::with_capacity(DEFAULT_BATCH_SIZE),
         }
     }
+
+    fn push(&mut self, span: RawSpan) {
+        if self.spans.len() == DEFAULT_BATCH_SIZE - 1 {
+            // flush spans
+            let spans: Vec<RawSpan> = self.drain().collect();
+            send_command(Command::SendSpans(spans));
+            return;
+        }
+        self.spans.push(span);
+    }
+
+    /// Called from the span consumer
+    fn drain(&mut self) -> impl Iterator<Item = RawSpan> + '_ {
+        self.spans.drain(..)
+    }
+}
+
+fn root() -> RootSpan {
+    with_span_queue(|span_queue| RootSpan {
+        span_queue_handle: span_queue.clone(),
+    })
+}
+
+struct RootSpan {
+    span_queue_handle: Rc<RefCell<SpanQueue>>,
+}
+
+impl Drop for RootSpan {
+    fn drop(&mut self) {
+        let spans: Vec<RawSpan> = self.span_queue_handle.borrow_mut().drain().collect();
+
+        send_command(Command::SendSpans(spans));
+    }
+}
+
+trait SpanConsumer {
+    fn consume(&mut self, spans: impl Iterator<Item = RawSpan>);
+}
+
+fn set_global(config: Config, consumer: impl SpanConsumer) {}
+
+struct Config {}
+
+static SPSC_RXS: Mutex<Vec<Receiver<Command>>> = Mutex::new(Vec::new());
+
+enum Command {
+    SendSpans(Vec<RawSpan>),
+}
+
+fn register_receiver(rx: Receiver<Command>) {
+    SPSC_RXS.lock().unwrap().push(rx);
+}
+
+fn send_command(cmd: Command) {
+    COMMAND_SENDER
+        .try_with(|sender| unsafe { (*sender.get()).send(cmd).ok() })
+        .ok();
 }
 
 thread_local! {
     pub static SPAN_QUEUE: Rc<RefCell<SpanQueue>> = Rc::new(RefCell::new(SpanQueue::new()));
+
+    static COMMAND_SENDER: UnsafeCell<Sender<Command>> = {
+        let (tx, rx) = spsc::bounded(10240);
+        register_receiver(rx);
+        UnsafeCell::new(tx)
+    };
 }
 
-static RAW_SPANS_POOL: Lazy<Pool<Vec<RawSpan>>> = Lazy::new(|| Pool::new(Vec::new, Vec::clear));
-
-thread_local! {
-    static RAW_SPANS_PULLER: RefCell<Puller<'static, Vec<RawSpan>>> = RefCell::new(RAW_SPANS_POOL.puller(512));
+fn with_span_queue<R>(f: impl FnOnce(&Rc<RefCell<SpanQueue>>) -> R) -> R {
+    SPAN_QUEUE.with(|queue| f(queue))
 }
 
-pub type RawSpans = Reusable<'static, Vec<RawSpan>>;
+// static RAW_SPANS_POOL: Lazy<Pool<Vec<RawSpan>>> = Lazy::new(|| Pool::new(Vec::new, Vec::clear));
 
-impl Default for RawSpans {
-    fn default() -> Self {
-        RAW_SPANS_PULLER
-            .try_with(|puller| puller.borrow_mut().pull())
-            .unwrap_or_else(|_| Reusable::new(&*RAW_SPANS_POOL, vec![]))
-    }
-}
+// thread_local! {
+//     static RAW_SPANS_PULLER: RefCell<Puller<'static, Vec<RawSpan>>> = RefCell::new(RAW_SPANS_POOL.puller(512));
+// }
 
-impl FromIterator<RawSpan> for RawSpans {
-    fn from_iter<T: IntoIterator<Item = RawSpan>>(iter: T) -> Self {
-        let mut raw_spans = RawSpans::default();
-        raw_spans.extend(iter);
-        raw_spans
-    }
-}
+// pub type RawSpans = Reusable<'static, Vec<RawSpan>>;
+
+// impl Default for RawSpans {
+//     fn default() -> Self {
+//         RAW_SPANS_PULLER
+//             .try_with(|puller| puller.borrow_mut().pull())
+//             .unwrap_or_else(|_| Reusable::new(&*RAW_SPANS_POOL, vec![]))
+//     }
+// }
+
+// impl FromIterator<RawSpan> for RawSpans {
+//     fn from_iter<T: IntoIterator<Item = RawSpan>>(iter: T) -> Self {
+//         let mut raw_spans = RawSpans::default();
+//         raw_spans.extend(iter);
+//         raw_spans
+//     }
+// }
