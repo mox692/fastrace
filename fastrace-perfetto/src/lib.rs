@@ -6,6 +6,7 @@ use fastrace::collector::Reporter;
 use fastrace::prelude::*;
 use prost::Message;
 use std::{
+    borrow::Cow,
     collections::{HashMap, HashSet},
     fs::File,
     io::Write,
@@ -17,6 +18,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 pub mod config;
+pub mod macros;
 mod perfetto_protos;
 mod utils;
 use perfetto_protos::{
@@ -98,11 +100,11 @@ impl PerfettoReporter {
     }
 }
 
-pub fn enter_with_local_parent_with_thread_id(span: LocalSpan) -> LocalSpan {
-    span.with_property(|| ("track_uuid", track_uuid_str()))
+pub fn enter_with_local_parent_with_thread_id(name: impl Into<Cow<'static, str>>) -> LocalSpan {
+    LocalSpan::enter_with_local_parent(name).with_property(|| ("track_uuid", track_uuid_str()))
 }
-pub fn root_with_thread_id(span: Span) -> Span {
-    span.with_property(|| ("track_uuid", track_uuid_str()))
+pub fn root_with_thread_id(name: impl Into<Cow<'static, str>>, ctx: SpanContext) -> Span {
+    Span::root("root", ctx).with_property(|| ("track_uuid", track_uuid_str()))
 }
 
 /// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#TrackEvent
