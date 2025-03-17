@@ -4,6 +4,7 @@
 use bytes::BytesMut;
 use fastrace::collector::Reporter;
 use fastrace::prelude::*;
+pub mod fast;
 use prost::Message;
 use std::{
     borrow::Cow,

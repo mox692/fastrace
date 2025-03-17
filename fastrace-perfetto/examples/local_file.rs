@@ -15,17 +15,14 @@ fn single_thread() {
 
     {
         // Start tracing
-        let root = Span::root("root", SpanContext::random());
-        let root = root_with_thread_id(root);
+        let root = root_with_thread_id("root", SpanContext::random());
         let _g1 = root.set_local_parent();
         {
-            let _g2 = LocalSpan::enter_with_local_parent("child1");
-            let _g2 = enter_with_local_parent_with_thread_id(_g2);
+            let _g2 = enter_with_local_parent_with_thread_id("child1");
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
         {
-            let _g2 = LocalSpan::enter_with_local_parent("child2");
-            let _g2 = enter_with_local_parent_with_thread_id(_g2);
+            let _g2 = enter_with_local_parent_with_thread_id("child2");
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
     }
@@ -43,34 +40,28 @@ fn multi_thread() {
 
     let jh = std::thread::spawn(|| {
         // Start tracing
-        let root = Span::root("thread2", SpanContext::random());
-        let root = root_with_thread_id(root);
+        let root = root_with_thread_id("root", SpanContext::random());
         let _g1 = root.set_local_parent();
         {
-            let _g2 = LocalSpan::enter_with_local_parent("child1 of thread2");
-            let _g2 = enter_with_local_parent_with_thread_id(_g2);
+            let _g2 = enter_with_local_parent_with_thread_id("child1");
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
         {
-            let _g2 = LocalSpan::enter_with_local_parent("child2 of thread2");
-            let _g2 = enter_with_local_parent_with_thread_id(_g2);
+            let _g2 = enter_with_local_parent_with_thread_id("child2");
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
     });
 
     // Start tracing
     {
-        let root = Span::root("thread3333333", SpanContext::random());
-        let root = root_with_thread_id(root);
+        let root = root_with_thread_id("root", SpanContext::random());
         let _g1 = root.set_local_parent();
         {
-            let _g2 = LocalSpan::enter_with_local_parent("child1 of thread2");
-            let _g2 = enter_with_local_parent_with_thread_id(_g2);
+            let _g2 = enter_with_local_parent_with_thread_id("child1");
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
         {
-            let _g2 = LocalSpan::enter_with_local_parent("child2 of thread2");
-            let _g2 = enter_with_local_parent_with_thread_id(_g2);
+            let _g2 = enter_with_local_parent_with_thread_id("child2");
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
     }
