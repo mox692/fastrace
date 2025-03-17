@@ -33,8 +33,10 @@ thread_local! {
     /// Indicator whether the thread descriptor has been sent.
     static THREAD_DESCRIPTOR_SENT: AtomicBool = AtomicBool::new(false);
 }
+
+// A map of track_uuid and `ThreadInfo`.
 static TRACK_MAP: OnceLock<RwLock<HashMap<u64, ThreadInfo>>> = OnceLock::new();
-static DESCRIPTOR_INITIALIZED: OnceLock<RwLock<HashSet<u64>>> = OnceLock::new();
+static INITIALIZED_SET: OnceLock<RwLock<HashSet<u64>>> = OnceLock::new();
 static THREAD_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 struct ThreadInfo {
@@ -151,13 +153,13 @@ fn create_thread_descriptor(pid: i32, thread_id: usize, thread_name: String) -> 
 }
 
 fn descriptor_initialized(track_uuid: u64) -> bool {
-    let v = DESCRIPTOR_INITIALIZED.get_or_init(|| RwLock::new(HashSet::new()));
+    let v = INITIALIZED_SET.get_or_init(|| RwLock::new(HashSet::new()));
     let guard = v.read().unwrap();
     guard.get(&track_uuid).is_some()
 }
 
 fn set_descriptor_initialized(track_uuid: u64) {
-    let v = DESCRIPTOR_INITIALIZED.get_or_init(|| RwLock::new(HashSet::new()));
+    let v = INITIALIZED_SET.get_or_init(|| RwLock::new(HashSet::new()));
     let mut guard = v.write().unwrap();
     guard.insert(track_uuid);
 }
