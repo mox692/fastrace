@@ -59,6 +59,28 @@
 /// # TODO
 /// * tlsに溜まったログを集めるタイミング
 ///   * それぞれのスレッドがpushすべきか, reporter threadがpullしに行くか
+/// * threadが中断された際のflushの処理
+///   * TLSだと, flushが難しい可能性がある -> いや, dropの実装で対応できる
+///   * ただ, drop呼び出しはthread終了の順番に依存する模様 (main or consumerが先に終了しちゃうとロスが発生)
+///
+/// # Arena 自作の可能性
+///
+/// ### 機能
+/// * スレッド固有のメモリ領域を提供する
+///   * thread local storageに近いが, 他のthreadのmemory regionにもアクセスができる
+/// * threadに固有のキーを割り当て, そのキーによってそのスレッドがどのメモリリージョンを触れるのかを判断
+/// * 1つのスレッドが持てるデータ量はハードリミットが決まっている。
+/// * しかし, 登録できるスレッドの数は制限しない。
+///
+/// ### 課題
+/// * 新しくthreadが作成された時, どうやってその
+/// * 衝突しないようなキーの作成方法
+///
+///
+/// # まとめ
+/// * worker threadにthread local storageを置く
+/// * runtimeのshutdownの時に, workerは全てshutdownされる
+/// * worker threadが消えた後に, consumer thread(こいつはshutdownされても残り続ける!)がflushを同期的に行う
 ///
 pub mod object_pool;
 pub mod spsc;
@@ -70,21 +92,17 @@ use std::{
     sync::Mutex,
 };
 
-pub enum SpanType {
-    RunTask = 0,
-    RuntimeStart = 1,
-    RuntimeTarminate = 2,
-}
-
 struct RunTask {}
 struct RuntimeStart {}
 struct RuntimeTerminate {}
+struct ThreadDiscriptor {}
 
 fn type_name(typ: Type) -> &'static str {
     match typ {
         Type::RunTask(_) => "run_task",
         Type::RuntimeStart(_) => "runtime_start",
         Type::RuntimeTarminate(_) => "runtime_terminate",
+        Type::ThreadDiscriptor(_) => "thread_discriptor",
     }
 }
 
@@ -92,6 +110,8 @@ enum Type {
     RunTask(RunTask),
     RuntimeStart(RuntimeStart),
     RuntimeTarminate(RuntimeTerminate),
+    // perfetto specific
+    ThreadDiscriptor(ThreadDiscriptor),
 }
 
 pub struct RawSpan {
@@ -158,21 +178,13 @@ impl SpanQueue {
     }
 }
 
-fn root() -> RootSpan {
-    with_span_queue(|span_queue| RootSpan {
-        span_queue_handle: span_queue.clone(),
-    })
-}
-
-struct RootSpan {
-    span_queue_handle: Rc<RefCell<SpanQueue>>,
-}
-
-impl Drop for RootSpan {
+impl Drop for SpanQueue {
+    /// When SpanQueue is used as a thread local value, then this drop gets called
+    /// at the time when this thread is terminated, making sure all spans would not
+    /// be lossed.
     fn drop(&mut self) {
-        let spans: Vec<RawSpan> = self.span_queue_handle.borrow_mut().drain().collect();
-
-        send_command(Command::SendSpans(spans));
+        let command = Command::SendSpans(self.drain().collect());
+        send_command(command);
     }
 }
 
@@ -200,8 +212,24 @@ fn send_command(cmd: Command) {
         .ok();
 }
 
+fn thread_descriptor() -> RawSpan {
+    RawSpan {
+        typ: Type::ThreadDiscriptor(ThreadDiscriptor {}),
+        thread_id: 0,
+        start: Instant::ZERO,
+        end: Instant::ZERO,
+    }
+}
+
 thread_local! {
-    pub static SPAN_QUEUE: Rc<RefCell<SpanQueue>> = Rc::new(RefCell::new(SpanQueue::new()));
+    static SPAN_QUEUE: Rc<RefCell<SpanQueue>> = {
+        let mut queue = SpanQueue::new();
+
+        // For perfetto
+        queue.push(thread_descriptor());
+
+        Rc::new(RefCell::new(queue))
+    };
 
     static COMMAND_SENDER: UnsafeCell<Sender<Command>> = {
         let (tx, rx) = spsc::bounded(10240);
@@ -213,27 +241,3 @@ thread_local! {
 fn with_span_queue<R>(f: impl FnOnce(&Rc<RefCell<SpanQueue>>) -> R) -> R {
     SPAN_QUEUE.with(|queue| f(queue))
 }
-
-// static RAW_SPANS_POOL: Lazy<Pool<Vec<RawSpan>>> = Lazy::new(|| Pool::new(Vec::new, Vec::clear));
-
-// thread_local! {
-//     static RAW_SPANS_PULLER: RefCell<Puller<'static, Vec<RawSpan>>> = RefCell::new(RAW_SPANS_POOL.puller(512));
-// }
-
-// pub type RawSpans = Reusable<'static, Vec<RawSpan>>;
-
-// impl Default for RawSpans {
-//     fn default() -> Self {
-//         RAW_SPANS_PULLER
-//             .try_with(|puller| puller.borrow_mut().pull())
-//             .unwrap_or_else(|_| Reusable::new(&*RAW_SPANS_POOL, vec![]))
-//     }
-// }
-
-// impl FromIterator<RawSpan> for RawSpans {
-//     fn from_iter<T: IntoIterator<Item = RawSpan>>(iter: T) -> Self {
-//         let mut raw_spans = RawSpans::default();
-//         raw_spans.extend(iter);
-//         raw_spans
-//     }
-// }
