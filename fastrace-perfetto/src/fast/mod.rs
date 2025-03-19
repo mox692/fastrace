@@ -188,13 +188,77 @@ impl Drop for SpanQueue {
     }
 }
 
-trait SpanConsumer {
-    fn consume(&mut self, spans: impl Iterator<Item = RawSpan>);
+/// TODO: Do we need Send + 'static bound?
+pub trait SpanConsumer: Send + 'static {
+    /// TODO: Can spans be abstracted?
+    fn consume(&mut self, spans: Vec<RawSpan>);
 }
 
-fn set_global(config: Config, consumer: impl SpanConsumer) {}
+static GLOBAL_SPAN_CONSUMER: Mutex<GlobalSpanConsumer> = Mutex::new(GlobalSpanConsumer::new());
 
-struct Config {}
+struct GlobalSpanConsumer {
+    consumer: Option<Box<dyn SpanConsumer>>,
+}
+
+impl GlobalSpanConsumer {
+    const fn new() -> Self {
+        Self { consumer: None }
+    }
+
+    fn handle_commands(&mut self) {
+        let mut guard = SPSC_RXS.lock().unwrap();
+        let rxs: Vec<Receiver<Command>> = guard.drain(..).collect();
+        drop(guard);
+
+        let mut spans: Vec<RawSpan> = vec![];
+
+        for mut rx in rxs {
+            while let Ok(Some(Command::SendSpans(span))) = rx.try_recv() {
+                spans.extend(span);
+            }
+        }
+
+        let Some(consumer) = &mut self.consumer else {
+            panic!("Consumer should be set");
+        };
+
+        consumer.as_mut().consume(spans);
+    }
+}
+
+/// Stop tracing, and flush all spans that worker threads currently have.
+pub fn stop() {
+    // TODO: change global flag
+}
+
+/// Start tracing. Before calling this, you have to call `initialize` first.
+pub fn start() {
+    // TODO: change global flag
+}
+
+/// Initialize tracing.
+pub fn initialize(config: Config, consumer: impl SpanConsumer) {
+    // spawn consumer thread
+
+    let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock().unwrap();
+    global_consumer.consumer = Some(Box::new(consumer));
+    drop(global_consumer);
+
+    std::thread::Builder::new()
+        .name("global-span-consumer".to_string())
+        .spawn(move || {
+            loop {
+                let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock().unwrap();
+                global_consumer.handle_commands();
+                drop(global_consumer);
+
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+        })
+        .unwrap();
+}
+
+pub struct Config {}
 
 static SPSC_RXS: Mutex<Vec<Receiver<Command>>> = Mutex::new(Vec::new());
 
@@ -212,10 +276,11 @@ fn send_command(cmd: Command) {
         .ok();
 }
 
+/// This is called when a SpanQueue at local storage gets initialized.
 fn thread_descriptor() -> RawSpan {
     RawSpan {
         typ: Type::ThreadDiscriptor(ThreadDiscriptor {}),
-        thread_id: 0,
+        thread_id: thread_id::get() as u64,
         start: Instant::ZERO,
         end: Instant::ZERO,
     }
