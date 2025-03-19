@@ -89,7 +89,7 @@ use spsc::{Receiver, Sender};
 use std::{
     cell::{RefCell, UnsafeCell},
     rc::Rc,
-    sync::Mutex,
+    sync::{Mutex, atomic::AtomicBool},
 };
 
 struct RunTask {}
@@ -128,19 +128,42 @@ pub struct Span {
 }
 
 fn span(typ: Type, thread_id: u64) -> Span {
-    with_span_queue(|span_queue| Span {
-        inner: Some(RawSpan {
-            typ,
-            thread_id,
-            start: Instant::now(),
-            end: Instant::ZERO,
-        }),
-        span_queue_handle: span_queue.clone(),
+    with_span_queue(|span_queue| {
+        if enabled() {
+            Span {
+                inner: Some(RawSpan {
+                    typ,
+                    thread_id,
+                    start: Instant::now(),
+                    end: Instant::ZERO,
+                }),
+                span_queue_handle: span_queue.clone(),
+            }
+        } else {
+            Span {
+                inner: None,
+                span_queue_handle: span_queue.clone(),
+            }
+        }
     })
+}
+
+static ENABLED: AtomicBool = AtomicBool::new(false);
+
+fn enabled() -> bool {
+    ENABLED.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+fn set_enabled(set: bool) {
+    ENABLED.store(set, std::sync::atomic::Ordering::Relaxed);
 }
 
 impl Drop for Span {
     fn drop(&mut self) {
+        if !enabled() {
+            return;
+        }
+
         let Some(mut span) = self.inner.take() else {
             return;
         };
@@ -226,14 +249,18 @@ impl GlobalSpanConsumer {
     }
 }
 
-/// Stop tracing, and flush all spans that worker threads currently have.
+/// Stop tracing.
+///
+/// This function flushes spans that the consumer thread has, but doesn't against the
+/// spans that is owned by worker threads.
 pub fn stop() {
-    // TODO: change global flag
+    set_enabled(false);
 }
 
 /// Start tracing. Before calling this, you have to call `initialize` first.
 pub fn start() {
-    // TODO: change global flag
+    // TODO: check if `initialize` has been called.
+    set_enabled(true)
 }
 
 /// Initialize tracing.
