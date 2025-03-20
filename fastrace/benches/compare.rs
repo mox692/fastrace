@@ -3,6 +3,12 @@
 use criterion::Criterion;
 use criterion::criterion_group;
 use criterion::criterion_main;
+use rt_trace::config::Config;
+use rt_trace::consumer::SpanConsumer;
+use rt_trace::initialize;
+use rt_trace::span;
+use rt_trace::span::RunTask;
+use rt_trace::start;
 
 fn init_opentelemetry() {
     use tracing_subscriber::prelude::*;
@@ -22,6 +28,17 @@ fn init_fastrace() {
     }
 
     fastrace::set_reporter(DummyReporter, fastrace::collector::Config::default());
+}
+
+fn init_rt_trace() {
+    struct DummyReporter;
+
+    impl SpanConsumer for DummyReporter {
+        fn consume(&mut self, spans: Vec<rt_trace::span::RawSpan>) {}
+    }
+
+    initialize(Config {}, DummyReporter {});
+    start();
 }
 
 fn opentelemetry_harness(n: usize) {
@@ -71,20 +88,31 @@ fn fastrace_harness(n: usize) {
     dummy_fastrace(n);
 }
 
+fn rt_trace_harness(n: usize) {
+    fn dummy_fastrace(n: usize) {
+        for _ in 0..n {
+            let _guard = span(span::Type::RunTask(RunTask {}), 12);
+        }
+    }
+    dummy_fastrace(n);
+}
+
 fn tracing_comparison(c: &mut Criterion) {
     init_opentelemetry();
     init_fastrace();
+    init_rt_trace();
 
     let mut bgroup = c.benchmark_group("compare");
 
-    for n in &[1, 10, 100, 1000] {
-        bgroup.bench_function(format!("Tokio Tracing/{n}"), |b| {
-            b.iter(|| opentelemetry_harness(*n))
-        });
-        bgroup.bench_function(format!("Rustracing/{n}"), |b| {
-            b.iter(|| rustracing_harness(*n))
-        });
+    for n in &[1, 10, 100, 1000, 10000, 100000, 1000000, 10000000] {
+        // bgroup.bench_function(format!("Tokio Tracing/{n}"), |b| {
+        //     b.iter(|| opentelemetry_harness(*n))
+        // });
+        // bgroup.bench_function(format!("Rustracing/{n}"), |b| {
+        //     b.iter(|| rustracing_harness(*n))
+        // });
         bgroup.bench_function(format!("fastrace/{n}"), |b| b.iter(|| fastrace_harness(*n)));
+        bgroup.bench_function(format!("rt_trace/{n}"), |b| b.iter(|| rt_trace_harness(*n)));
     }
 
     bgroup.finish();
