@@ -32,13 +32,12 @@ impl SpanQueue {
 
     #[inline]
     pub(crate) fn push(&mut self, span: RawSpan) {
-        if self.spans.len() == DEFAULT_BATCH_SIZE - 1 {
+        self.spans.push(span);
+        if self.spans.len() == DEFAULT_BATCH_SIZE {
             // flush spans
             let spans: Vec<RawSpan> = self.drain().collect();
             send_command(Command::SendSpans(spans));
-            return;
         }
-        self.spans.push(span);
     }
 
     /// Called from the span consumer
