@@ -106,7 +106,7 @@ fn type_name(typ: Type) -> &'static str {
     }
 }
 
-enum Type {
+pub enum Type {
     RunTask(RunTask),
     RuntimeStart(RuntimeStart),
     RuntimeTarminate(RuntimeTerminate),
@@ -127,6 +127,7 @@ pub struct Span {
     span_queue_handle: Rc<RefCell<SpanQueue>>,
 }
 
+/// Create a span.
 fn span(typ: Type, thread_id: u64) -> Span {
     with_span_queue(|span_queue| {
         if enabled() {
