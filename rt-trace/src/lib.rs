@@ -104,12 +104,7 @@ use utils::spsc::bounded;
 pub mod config;
 pub mod macros;
 mod utils;
-use perfetto_protos::{
-    ProcessDescriptor, ThreadDescriptor, Trace, TracePacket, TrackDescriptor, TrackEvent,
-    trace_packet::{Data, OptionalTrustedPacketSequenceId, OptionalTrustedUid},
-    track_descriptor::StaticOrDynamicName,
-    track_event::{self, NameField},
-};
+
 pub mod backend;
 
 use crate::utils::spsc::{Receiver, Sender};
@@ -124,6 +119,7 @@ struct RunTask {}
 struct RuntimeStart {}
 struct RuntimeTerminate {}
 struct ThreadDiscriptor {}
+struct ProcessDiscriptor {}
 
 fn type_name(typ: Type) -> &'static str {
     match typ {
@@ -131,6 +127,7 @@ fn type_name(typ: Type) -> &'static str {
         Type::RuntimeStart(_) => "runtime_start",
         Type::RuntimeTarminate(_) => "runtime_terminate",
         Type::ThreadDiscriptor(_) => "thread_discriptor",
+        Type::ProcessDiscriptor(_) => "process_discriptor",
     }
 }
 
@@ -140,6 +137,7 @@ pub enum Type {
     RuntimeTarminate(RuntimeTerminate),
     // perfetto specific
     ThreadDiscriptor(ThreadDiscriptor),
+    ProcessDiscriptor(ProcessDiscriptor),
 }
 
 pub struct RawSpan {
@@ -264,6 +262,13 @@ impl GlobalSpanConsumer {
 
         let mut spans: Vec<RawSpan> = vec![];
 
+        // Required for perfetto tracing.
+        // TODO: Can we put this logic elsewhere?
+        if !flushed_once() {
+            spans.push(process_descriptor());
+            set_flushed_once(true);
+        }
+
         for mut rx in rxs {
             while let Ok(Some(Command::SendSpans(span))) = rx.try_recv() {
                 spans.extend(span);
@@ -290,6 +295,16 @@ pub fn stop() {
 pub fn start() {
     // TODO: check if `initialize` has been called.
     set_enabled(true)
+}
+
+/// Mainly used for perfetto tracing, where we need to publish process descriptor first.
+static FLUSHED_ONCE: AtomicBool = AtomicBool::new(false);
+
+fn flushed_once() -> bool {
+    FLUSHED_ONCE.load(Ordering::Relaxed)
+}
+fn set_flushed_once(set: bool) {
+    FLUSHED_ONCE.store(set, Ordering::Relaxed);
 }
 
 /// Initialize tracing.
@@ -342,11 +357,22 @@ fn thread_descriptor() -> RawSpan {
     }
 }
 
+/// This is called when a SpanQueue at local storage gets initialized.
+fn process_descriptor() -> RawSpan {
+    RawSpan {
+        typ: Type::ProcessDiscriptor(ProcessDiscriptor {}),
+        thread_id: thread_id::get() as u64,
+        start: Instant::ZERO,
+        end: Instant::ZERO,
+    }
+}
+
 thread_local! {
     static SPAN_QUEUE: Rc<RefCell<SpanQueue>> = {
         let mut queue = SpanQueue::new();
 
-        // For perfetto
+        // perfetto specific operation.
+        // TODO: Can we put this logic elsewhere?
         queue.push(thread_descriptor());
 
         Rc::new(RefCell::new(queue))
