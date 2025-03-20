@@ -34,7 +34,7 @@ fn init_rt_trace() {
     struct DummyReporter;
 
     impl SpanConsumer for DummyReporter {
-        fn consume(&mut self, spans: Vec<rt_trace::span::RawSpan>) {}
+        fn consume(&mut self, spans: &[rt_trace::span::RawSpan]) {}
     }
 
     initialize(Config {}, DummyReporter {});

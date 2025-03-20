@@ -16,7 +16,7 @@ use std::{
 // TODO: Do we need Send + 'static bound?
 pub trait SpanConsumer: Send + 'static {
     // TODO: Can spans be abstracted?
-    fn consume(&mut self, spans: Vec<RawSpan>);
+    fn consume(&mut self, spans: &[RawSpan]);
 }
 
 static SPSC_RXS: Mutex<Vec<Receiver<Command>>> = Mutex::new(Vec::new());
@@ -63,12 +63,10 @@ impl GlobalSpanConsumer {
         Self { consumer: None }
     }
 
-    pub(crate) fn handle_commands(&mut self) {
+    pub(crate) fn handle_commands(&mut self, spans: &mut Vec<RawSpan>) {
         let mut guard = SPSC_RXS.lock().unwrap();
         let rxs: Vec<Receiver<Command>> = guard.drain(..).collect();
         drop(guard);
-
-        let mut spans: Vec<RawSpan> = vec![];
 
         // Required for perfetto tracing.
         // TODO: Can we put this logic elsewhere?
@@ -87,6 +85,6 @@ impl GlobalSpanConsumer {
             panic!("Consumer should be set");
         };
 
-        consumer.as_mut().consume(spans);
+        consumer.as_mut().consume(spans.as_slice());
     }
 }

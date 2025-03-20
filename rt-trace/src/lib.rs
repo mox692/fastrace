@@ -77,9 +77,10 @@ pub fn initialize(_config: Config, consumer: impl SpanConsumer) {
     std::thread::Builder::new()
         .name("global-span-consumer".to_string())
         .spawn(move || {
+            let mut vec = vec![];
             loop {
                 let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock().unwrap();
-                global_consumer.handle_commands();
+                global_consumer.handle_commands(&mut vec);
                 drop(global_consumer);
 
                 std::thread::sleep(std::time::Duration::from_millis(100));
