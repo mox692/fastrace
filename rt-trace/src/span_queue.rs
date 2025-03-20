@@ -23,12 +23,14 @@ pub(crate) struct SpanQueue {
 }
 
 impl SpanQueue {
+    #[inline]
     fn new() -> Self {
         Self {
             spans: Vec::with_capacity(DEFAULT_BATCH_SIZE),
         }
     }
 
+    #[inline]
     pub(crate) fn push(&mut self, span: RawSpan) {
         if self.spans.len() == DEFAULT_BATCH_SIZE - 1 {
             // flush spans
@@ -40,6 +42,7 @@ impl SpanQueue {
     }
 
     /// Called from the span consumer
+    #[inline]
     fn drain(&mut self) -> impl Iterator<Item = RawSpan> + '_ {
         self.spans.drain(..)
     }
@@ -55,6 +58,7 @@ impl Drop for SpanQueue {
     }
 }
 
+#[inline]
 pub(crate) fn with_span_queue<R>(f: impl FnOnce(&Rc<RefCell<SpanQueue>>) -> R) -> R {
     SPAN_QUEUE.with(|queue| f(queue))
 }

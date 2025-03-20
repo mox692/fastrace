@@ -76,16 +76,14 @@ fn rustracing_harness(n: usize) {
 fn fastrace_harness(n: usize) {
     use fastrace::prelude::*;
 
-    fn dummy_fastrace(n: usize) {
-        for _ in 0..n {
+    let root = Span::root("parent", SpanContext::new(TraceId(12), SpanId::default()));
+    for _ in 0..(n / 10000) {
+        // We have to flush spans stored in SpanQueue for every 10240 iteration.
+        let _g = root.set_local_parent();
+        for _ in 0..10000 {
             let _guard = LocalSpan::enter_with_local_parent("child");
         }
     }
-
-    let root = Span::root("parent", SpanContext::new(TraceId(12), SpanId::default()));
-    let _g = root.set_local_parent();
-
-    dummy_fastrace(n);
 }
 
 fn rt_trace_harness(n: usize) {
@@ -104,7 +102,7 @@ fn tracing_comparison(c: &mut Criterion) {
 
     let mut bgroup = c.benchmark_group("compare");
 
-    for n in &[1, 10, 100, 1000, 10000, 100000, 1000000, 10000000] {
+    for n in &[10000, 100000, 1000000] {
         // bgroup.bench_function(format!("Tokio Tracing/{n}"), |b| {
         //     b.iter(|| opentelemetry_harness(*n))
         // });

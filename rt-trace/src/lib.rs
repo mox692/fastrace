@@ -16,15 +16,18 @@ use fastant::Instant;
 /// Whether tracing is enabled or not.
 static ENABLED: AtomicBool = AtomicBool::new(false);
 
+#[inline]
 pub fn enabled() -> bool {
     ENABLED.load(std::sync::atomic::Ordering::Relaxed)
 }
 
+#[inline]
 fn set_enabled(set: bool) {
     ENABLED.store(set, std::sync::atomic::Ordering::Relaxed);
 }
 
 /// Create a span.
+#[inline]
 pub fn span(typ: Type, thread_id: u64) -> Span {
     with_span_queue(|span_queue| {
         if enabled() {
@@ -50,17 +53,20 @@ pub fn span(typ: Type, thread_id: u64) -> Span {
 ///
 /// This function flushes spans that the consumer thread has, but doesn't against the
 /// spans that is owned by worker threads.
+#[inline]
 pub fn stop() {
     set_enabled(false);
 }
 
 /// Start tracing. Before calling this, you have to call `initialize` first.
+#[inline]
 pub fn start() {
     // TODO: check if `initialize` has been called.
     set_enabled(true)
 }
 
 /// Initialize tracing.
+#[inline]
 pub fn initialize(_config: Config, consumer: impl SpanConsumer) {
     // spawn consumer thread
 

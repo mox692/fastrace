@@ -41,6 +41,7 @@ pub struct Span {
 }
 
 impl Drop for Span {
+    #[inline]
     fn drop(&mut self) {
         if !enabled() {
             return;

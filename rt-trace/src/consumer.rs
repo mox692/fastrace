@@ -25,6 +25,7 @@ pub(crate) fn register_receiver(rx: Receiver<Command>) {
     SPSC_RXS.lock().unwrap().push(rx);
 }
 
+#[inline]
 pub(crate) fn send_command(cmd: Command) {
     COMMAND_SENDER
         .try_with(|sender| unsafe { (*sender.get()).send(cmd).ok() })
@@ -42,6 +43,7 @@ thread_local! {
 /// Mainly used for perfetto tracing, where we need to publish process descriptor first.
 static FLUSHED_ONCE: AtomicBool = AtomicBool::new(false);
 
+#[inline]
 fn flushed_once() -> bool {
     FLUSHED_ONCE.load(Ordering::Relaxed)
 }

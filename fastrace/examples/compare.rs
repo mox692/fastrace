@@ -1,6 +1,4 @@
-use criterion::Criterion;
-use criterion::criterion_group;
-use criterion::criterion_main;
+use fastant::Instant;
 use rt_trace::config::Config;
 use rt_trace::consumer::SpanConsumer;
 use rt_trace::initialize;
@@ -11,16 +9,14 @@ use rt_trace::start;
 fn fastrace_harness(n: usize) {
     use fastrace::prelude::*;
 
-    fn dummy_fastrace(n: usize) {
-        for _ in 0..n {
+    let root = Span::root("parent", SpanContext::new(TraceId(12), SpanId::default()));
+    for i in 0..(n / 10000) {
+        // We have to flush spans stored in SpanQueue for every 10240 iteration.
+        let _g = root.set_local_parent();
+        for j in 0..10000 {
             let _guard = LocalSpan::enter_with_local_parent("child");
         }
     }
-
-    let root = Span::root("parent", SpanContext::new(TraceId(12), SpanId::default()));
-    let _g = root.set_local_parent();
-
-    dummy_fastrace(n);
 }
 
 fn rt_trace_harness(n: usize) {
@@ -53,17 +49,6 @@ fn init_rt_trace() {
     start();
 }
 
-fn tracing_comparison(c: &mut Criterion) {
-    init_opentelemetry();
-    init_fastrace();
-    init_rt_trace();
-
-    let n = 100000;
-
-    rt_trace_harness(n);
-    fastrace_harness(n);
-}
-
 fn run_rt_trace(n: usize) {
     init_rt_trace();
     rt_trace_harness(n);
@@ -75,5 +60,6 @@ fn run_fastrace(n: usize) {
 }
 
 fn main() {
-    run_fastrace(100000);
+    // run_fastrace(1000000);
+    run_rt_trace(100000);
 }
