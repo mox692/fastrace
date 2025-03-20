@@ -7,6 +7,7 @@ members = [
   "fastrace-opentelemetry",
   "fastrace-futures",
   "fastrace-perfetto",
+  "rt-trace",
   "test-statically-disable",
 ]
 resolver = "2"
