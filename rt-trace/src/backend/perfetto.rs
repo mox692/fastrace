@@ -1,10 +1,13 @@
 // Reference
 // * https://perfetto.dev/docs/reference/synthetic-track-event
 
-use crate::config;
-use crate::macros;
-use crate::utils;
+use crate::Type;
+
+use crate::span::ProcessDiscriptor;
+use crate::span::RawSpan;
+use crate::span::ThreadDiscriptor;
 use bytes::BytesMut;
+use fastant::Instant;
 use fastrace::collector::Reporter;
 use fastrace::prelude::*;
 use perfetto_protos::{
@@ -27,7 +30,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::perfetto_protos;
+use super::perfetto_protos;
 
 thread_local! {
     /// Unique identifier for the track associated with the current thread.
@@ -290,5 +293,25 @@ impl Reporter for PerfettoReporter {
         }
 
         write_trace(&trace, &mut self.output);
+    }
+}
+
+/// This is called when a SpanQueue at local storage gets initialized.
+pub(crate) fn thread_descriptor() -> RawSpan {
+    RawSpan {
+        typ: Type::ThreadDiscriptor(ThreadDiscriptor {}),
+        thread_id: thread_id::get() as u64,
+        start: Instant::ZERO,
+        end: Instant::ZERO,
+    }
+}
+
+/// This is called when a SpanQueue at local storage gets initialized.
+pub(crate) fn process_descriptor() -> RawSpan {
+    RawSpan {
+        typ: Type::ProcessDiscriptor(ProcessDiscriptor {}),
+        thread_id: thread_id::get() as u64,
+        start: Instant::ZERO,
+        end: Instant::ZERO,
     }
 }
