@@ -88,3 +88,19 @@ pub fn initialize(_config: Config, consumer: impl SpanConsumer) {
         })
         .unwrap();
 }
+
+/// Flush all spans currently held by the consumer thread.
+///
+/// This function should be called at the end of the program to ensure no spans
+/// held by the consumer thread are missed. Note that this function does not
+/// flush spans held in `SpanQueue`. You must drop the `SpanQueue` for each
+/// thread and collect the spans into the consumer thread *before* calling this function.
+#[inline]
+pub fn flush() {
+    let handle = std::thread::spawn(|| {
+        let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock().unwrap();
+        global_consumer.handle_commands(&mut vec![]);
+    });
+
+    handle.join().unwrap()
+}

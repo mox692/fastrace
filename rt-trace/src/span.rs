@@ -2,10 +2,15 @@ use crate::{enabled, span_queue::SpanQueue};
 use fastant::Instant;
 use std::{cell::RefCell, rc::Rc};
 
+#[derive(Debug)]
 pub struct RunTask {}
+#[derive(Debug)]
 pub struct RuntimeStart {}
+#[derive(Debug)]
 pub struct RuntimeTerminate {}
+#[derive(Debug)]
 pub struct ThreadDiscriptor {}
+#[derive(Debug)]
 pub struct ProcessDiscriptor {}
 
 fn type_name(typ: Type) -> &'static str {
@@ -18,6 +23,7 @@ fn type_name(typ: Type) -> &'static str {
     }
 }
 
+#[derive(Debug)]
 pub enum Type {
     RunTask(RunTask),
     RuntimeStart(RuntimeStart),
@@ -27,6 +33,7 @@ pub enum Type {
     ProcessDiscriptor(ProcessDiscriptor),
 }
 
+#[derive(Debug)]
 pub struct RawSpan {
     pub(crate) typ: Type,
     pub(crate) thread_id: u64,
