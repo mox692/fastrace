@@ -14,6 +14,7 @@ repository.workspace = true
 rust-version.workspace = true
 
 [features]
+default = ["enable"]
 enable = []
 
 [dependencies]
@@ -36,6 +37,7 @@ fastrace = { workspace = true, features = ["enable"] }
 fastrace-datadog = { workspace = true }
 fastrace-jaeger = { workspace = true }
 fastrace-opentelemetry = { workspace = true }
+rt-trace = { path = "../rt-trace" }
 flume = "0.11"
 futures-timer = "3"
 log = { workspace = true }
@@ -75,3 +77,6 @@ name = "spsc"
 [[bench]]
 harness = false
 name = "object_pool"
+
+[profile.release]
+debug = true
