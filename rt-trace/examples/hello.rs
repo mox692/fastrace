@@ -1,4 +1,7 @@
-use rt_trace::{config::Config, consumer::SpanConsumer, flush, initialize, span, span::RunTask};
+use rt_trace::{
+    backend::perfetto::PerfettoReporter, config::Config, flush, initialize, span, span::RunTask,
+    start,
+};
 
 fn main() {
     single_thread();
@@ -6,23 +9,19 @@ fn main() {
 }
 
 fn single_thread() {
-    struct DummyReporter;
+    let consumer = PerfettoReporter::new("./single.log");
 
-    impl SpanConsumer for DummyReporter {
-        fn consume(&mut self, spans: &[rt_trace::span::RawSpan]) {
-            println!("spans: {:?}", spans);
-        }
-    }
+    initialize(Config {}, consumer);
 
-    initialize(Config {}, DummyReporter {});
+    start();
 
     let jh = std::thread::spawn(|| {
         // Start tracing
         {
-            let _guard = span(span::Type::RunTask(RunTask {}), 12);
+            let _guard = span(span::Type::RunTask(RunTask {}), thread_id::get() as u64);
         }
         {
-            let _guard = span(span::Type::RunTask(RunTask {}), 12);
+            let _guard = span(span::Type::RunTask(RunTask {}), thread_id::get() as u64);
         }
     });
 

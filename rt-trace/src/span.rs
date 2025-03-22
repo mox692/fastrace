@@ -1,6 +1,6 @@
 use crate::{enabled, span_queue::SpanQueue};
 use fastant::Instant;
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, str::FromStr};
 
 #[derive(Debug)]
 pub struct RunTask {}
@@ -13,13 +13,23 @@ pub struct ThreadDiscriptor {}
 #[derive(Debug)]
 pub struct ProcessDiscriptor {}
 
-fn type_name(typ: Type) -> &'static str {
-    match typ {
-        Type::RunTask(_) => "run_task",
-        Type::RuntimeStart(_) => "runtime_start",
-        Type::RuntimeTarminate(_) => "runtime_terminate",
-        Type::ThreadDiscriptor(_) => "thread_discriptor",
-        Type::ProcessDiscriptor(_) => "process_discriptor",
+impl Type {
+    /// Return `str` representation of this type.
+    pub fn type_name_str(&self) -> &'static str {
+        match self {
+            &Type::RunTask(_) => "run_task",
+            &Type::RuntimeStart(_) => "runtime_start",
+            &Type::RuntimeTarminate(_) => "runtime_terminate",
+            &Type::ThreadDiscriptor(_) => "thread_discriptor",
+            &Type::ProcessDiscriptor(_) => "process_discriptor",
+        }
+    }
+
+    /// Return `String` representation of this type.
+    ///
+    /// TODO: avoid string allocation for this.
+    pub fn type_name_string(&self) -> String {
+        String::from_str(self.type_name_str()).unwrap()
     }
 }
 

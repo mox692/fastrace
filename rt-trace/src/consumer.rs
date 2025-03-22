@@ -2,13 +2,13 @@ use crate::{
     backend::perfetto::process_descriptor,
     command::Command,
     span::RawSpan,
-    utils::spsc::{Receiver, Sender, bounded},
+    utils::spsc::{bounded, Receiver, Sender},
 };
 use std::{
     cell::UnsafeCell,
     sync::{
-        Mutex,
         atomic::{AtomicBool, Ordering},
+        Mutex,
     },
 };
 
