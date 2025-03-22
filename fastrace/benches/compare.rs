@@ -1,8 +1,8 @@
 // Copyright 2020 TiKV Project Authors. Licensed under Apache-2.0.
 
-use criterion::Criterion;
 use criterion::criterion_group;
 use criterion::criterion_main;
+use criterion::Criterion;
 use rt_trace::config::Config;
 use rt_trace::consumer::SpanConsumer;
 use rt_trace::initialize;
@@ -89,7 +89,7 @@ fn fastrace_harness(n: usize) {
 fn rt_trace_harness(n: usize) {
     fn dummy_fastrace(n: usize) {
         for _ in 0..n {
-            let _guard = span(span::Type::RunTask(RunTask {}), 12);
+            let _guard = span(span::Type::RunTask(RunTask::default()), 12);
         }
     }
     dummy_fastrace(n);

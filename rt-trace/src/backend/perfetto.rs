@@ -33,6 +33,9 @@ use std::{
 };
 
 use super::perfetto_protos;
+use super::perfetto_protos::debug_annotation;
+use super::perfetto_protos::debug_annotation::Value;
+use super::perfetto_protos::DebugAnnotation;
 
 thread_local! {
     /// Unique identifier for the track associated with the current thread.
@@ -113,16 +116,30 @@ pub fn root_with_thread_id(name: impl Into<Cow<'static, str>>, ctx: SpanContext)
     Span::root("root", ctx).with_property(|| ("track_uuid", track_uuid_str()))
 }
 
+/// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#DebugAnnotation
+/// TODO: use object pool to reduce the number of allocations.
+fn create_debug_annotations() -> Vec<DebugAnnotation> {
+    let mut debug_annotation = DebugAnnotation::default();
+    let name_field = debug_annotation::NameField::Name("key1".to_string());
+    let value = Value::StringValue("value1".to_string());
+    debug_annotation.name_field = Some(name_field);
+    debug_annotation.value = Some(value);
+
+    vec![debug_annotation]
+}
+
 /// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#TrackEvent
 fn create_track_event(
     name: Option<String>,
     track_uuid: u64,
     event_type: Option<track_event::Type>,
+    debug_annotations: Vec<DebugAnnotation>,
 ) -> TrackEvent {
     TrackEvent {
         track_uuid: Some(track_uuid),
         name_field: name.map(NameField::Name),
         r#type: event_type.map(|typ| typ.into()),
+        debug_annotations,
         ..Default::default()
     }
 }
@@ -250,10 +267,12 @@ impl SpanConsumer for PerfettoReporter {
                 }
                 Type::RunTask(_) => {
                     // Start event packet
+                    let debug_annotations = create_debug_annotations();
                     let start_event = create_track_event(
                         Some(span.typ.type_name_string()),
                         span.thread_id,
                         Some(track_event::Type::SliceBegin),
+                        debug_annotations,
                     );
                     let start_packet = TracePacket {
                         data: Some(Data::TrackEvent(start_event)),
@@ -268,8 +287,13 @@ impl SpanConsumer for PerfettoReporter {
                     trace.packet.push(start_packet);
 
                     // End event packet
-                    let end_event =
-                        create_track_event(None, span.thread_id, Some(track_event::Type::SliceEnd));
+                    let debug_annotations = create_debug_annotations();
+                    let end_event = create_track_event(
+                        None,
+                        span.thread_id,
+                        Some(track_event::Type::SliceEnd),
+                        debug_annotations,
+                    );
                     let end_packet = TracePacket {
                         data: Some(Data::TrackEvent(end_event)),
                         trusted_pid: Some(pid),

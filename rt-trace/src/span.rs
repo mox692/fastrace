@@ -2,8 +2,18 @@ use crate::{enabled, span_queue::SpanQueue};
 use fastant::Instant;
 use std::{cell::RefCell, rc::Rc, str::FromStr};
 
-#[derive(Debug)]
-pub struct RunTask {}
+#[derive(Debug, Default)]
+pub struct RunTask {
+    pub id: Option<u64>,
+    // TODO: define more efficient string type.
+    pub name: Option<String>,
+    pub file: Option<&'static str>,
+    pub line: Option<u32>,
+    pub col: Option<u32>,
+    // TODO: define more efficient string type.
+    pub backtrace: Option<String>,
+}
+
 #[derive(Debug)]
 pub struct RuntimeStart {}
 #[derive(Debug)]
