@@ -1,17 +1,18 @@
 // Reference
 // * https://perfetto.dev/docs/reference/synthetic-track-event
 
+use super::perfetto_protos;
+use super::perfetto_protos::debug_annotation;
+use super::perfetto_protos::debug_annotation::Value;
+use super::perfetto_protos::DebugAnnotation;
 use crate::consumer::SpanConsumer;
-use crate::Type;
-
 use crate::span::ProcessDiscriptor;
 use crate::span::RawSpan;
 use crate::span::ThreadDiscriptor;
+use crate::Type;
 use bytes::BytesMut;
 use fastant::Anchor;
 use fastant::Instant;
-use fastrace::collector::Reporter;
-use fastrace::prelude::*;
 use perfetto_protos::{
     trace_packet::{Data, OptionalTrustedPacketSequenceId, OptionalTrustedUid},
     track_descriptor::StaticOrDynamicName,
@@ -20,81 +21,14 @@ use perfetto_protos::{
 };
 use prost::Message;
 use std::{
-    borrow::Cow,
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     fs::File,
     io::Write,
     path::Path,
-    sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
-        OnceLock, RwLock,
-    },
-    time::{SystemTime, UNIX_EPOCH},
+    sync::{OnceLock, RwLock},
 };
 
-use super::perfetto_protos;
-use super::perfetto_protos::debug_annotation;
-use super::perfetto_protos::debug_annotation::Value;
-use super::perfetto_protos::DebugAnnotation;
-
-thread_local! {
-    /// Unique identifier for the track associated with the current thread.
-    static TLS_DATA: TlsData = TlsData::new();
-
-    /// Indicator whether the thread descriptor has been sent.
-    static THREAD_DESCRIPTOR_SENT: AtomicBool = AtomicBool::new(false);
-}
-
-// A map of track_uuid and `ThreadInfo`.
-static TRACK_MAP: OnceLock<RwLock<HashMap<u64, ThreadInfo>>> = OnceLock::new();
 static INITIALIZED_SET: OnceLock<RwLock<HashSet<u64>>> = OnceLock::new();
-static THREAD_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-struct ThreadInfo {
-    thread_id: usize,
-    thread_name: &'static str,
-}
-
-// TODO: implement drop to cleanup leaked buffer.
-struct TlsData {
-    track_uuid_str: &'static str,
-}
-
-impl TlsData {
-    fn new() -> Self {
-        let counter = THREAD_COUNTER.fetch_add(1, Ordering::Relaxed);
-        let track_uuid = (SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_nanos() as u64)
-            + counter as u64;
-        let track_uuid_str = track_uuid.to_string().leak();
-        let thread_name = std::thread::current()
-            .name()
-            .unwrap_or(format!("thread-{counter}").as_str())
-            .to_owned()
-            .leak();
-
-        let map = TRACK_MAP.get_or_init(|| RwLock::new(HashMap::new()));
-        let mut guard = map.write().unwrap();
-        guard.insert(
-            track_uuid,
-            ThreadInfo {
-                thread_id: thread_id::get(),
-                thread_name,
-            },
-        );
-
-        Self { track_uuid_str }
-    }
-}
-
-fn track_uuid_str() -> &'static str {
-    TLS_DATA.with(|data| data.track_uuid_str)
-}
-
-/// Static indicator whether the process descriptor has been sent.
-static PROCESS_DESCRIPTOR_SENT: AtomicBool = AtomicBool::new(false);
 
 /// Reporter implementation for Perfetto tracing.
 pub struct PerfettoReporter {
@@ -107,13 +41,6 @@ impl PerfettoReporter {
             output: File::create(path.as_ref()).expect("Failed to create output file"),
         }
     }
-}
-
-pub fn enter_with_local_parent_with_thread_id(name: impl Into<Cow<'static, str>>) -> LocalSpan {
-    LocalSpan::enter_with_local_parent(name).with_property(|| ("track_uuid", track_uuid_str()))
-}
-pub fn root_with_thread_id(name: impl Into<Cow<'static, str>>, ctx: SpanContext) -> Span {
-    Span::root("root", ctx).with_property(|| ("track_uuid", track_uuid_str()))
 }
 
 /// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#DebugAnnotation
@@ -178,21 +105,13 @@ fn create_thread_descriptor(pid: i32, thread_id: usize, thread_name: String) -> 
     }
 }
 
-fn descriptor_initialized(track_uuid: u64) -> bool {
-    let v = INITIALIZED_SET.get_or_init(|| RwLock::new(HashSet::new()));
-    let guard = v.read().unwrap();
-    guard.get(&track_uuid).is_some()
-}
-
 fn set_descriptor_initialized(track_uuid: u64) {
-    let v = INITIALIZED_SET.get_or_init(|| RwLock::new(HashSet::new()));
-    let mut guard = v.write().unwrap();
-    guard.insert(track_uuid);
+    let lock = INITIALIZED_SET.get_or_init(|| RwLock::new(HashSet::new()));
+    lock.write().unwrap().insert(track_uuid);
 }
 
 /// Appends a thread descriptor packet to the trace if not already sent.
 fn append_thread_descriptor(trace: &mut Trace, track_uuid: u64) {
-    // if !descriptor_initialized(track_uuid) {
     set_descriptor_initialized(track_uuid);
 
     // TODO: avoid syscall
@@ -237,15 +156,6 @@ fn write_trace(trace: &Trace, output: &mut File) {
     trace.encode(&mut buf).unwrap();
     output.write_all(&buf).unwrap();
     output.flush().unwrap()
-}
-
-fn get_track_uuid_from_span_record(span: &SpanRecord) -> Option<u64> {
-    let (_, v) = span
-        .properties
-        .iter()
-        .find(|prop| prop.0.as_ref() == "track_uuid")?;
-
-    v.parse::<u64>().ok()
 }
 
 impl SpanConsumer for PerfettoReporter {
