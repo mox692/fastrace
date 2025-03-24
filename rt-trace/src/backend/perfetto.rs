@@ -2,31 +2,47 @@
 // * https://perfetto.dev/docs/reference/synthetic-track-event
 
 use super::perfetto_protos;
+use super::perfetto_protos::DebugAnnotation;
 use super::perfetto_protos::debug_annotation;
 use super::perfetto_protos::debug_annotation::Value;
-use super::perfetto_protos::DebugAnnotation;
+use crate::Type;
 use crate::consumer::SpanConsumer;
 use crate::span::ProcessDiscriptor;
 use crate::span::RawSpan;
 use crate::span::ThreadDiscriptor;
-use crate::Type;
+use crate::utils::object_pool::Pool;
+use crate::utils::object_pool::Puller;
+use crate::utils::object_pool::Reusable;
 use bytes::BytesMut;
+use core::cell::RefCell;
 use fastant::Anchor;
 use fastant::Instant;
+use once_cell::sync::Lazy;
 use perfetto_protos::{
+    ProcessDescriptor, ThreadDescriptor, Trace, TracePacket, TrackDescriptor, TrackEvent,
     trace_packet::{Data, OptionalTrustedPacketSequenceId, OptionalTrustedUid},
     track_descriptor::StaticOrDynamicName,
     track_event::{self, NameField},
-    ProcessDescriptor, ThreadDescriptor, Trace, TracePacket, TrackDescriptor, TrackEvent,
 };
 use prost::Message;
-use std::{
-    collections::HashSet,
-    fs::File,
-    io::Write,
-    path::Path,
-    sync::{OnceLock, RwLock},
-};
+use std::{fs::File, io::Write, path::Path};
+
+static TRACE_PACKETS_POOL: Lazy<Pool<Vec<TracePacket>>> =
+    Lazy::new(|| Pool::new(Vec::new, Vec::clear));
+
+thread_local! {
+    static TRACE_PACKETS_PULLER: RefCell<Puller<'static, Vec<TracePacket>>> = RefCell::new(TRACE_PACKETS_POOL.puller(2));
+}
+
+pub type TracePackets = Reusable<'static, Vec<TracePacket>>;
+
+impl Default for TracePackets {
+    fn default() -> Self {
+        TRACE_PACKETS_PULLER
+            .try_with(|puller| puller.borrow_mut().pull())
+            .unwrap_or_else(|_| Reusable::new(&*TRACE_PACKETS_POOL, vec![]))
+    }
+}
 
 /// Reporter implementation for Perfetto tracing.
 pub struct PerfettoReporter {
@@ -47,7 +63,7 @@ impl PerfettoReporter {
 /// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#DebugAnnotation
 #[inline]
 fn create_debug_annotations() -> Vec<DebugAnnotation> {
-    /// TODO: use object pool to reduce the number of allocations.
+    // TODO: use object pool to reduce the number of allocations.
     let mut debug_annotation = DebugAnnotation::default();
     let name_field = debug_annotation::NameField::Name("key1".to_string());
     let value = Value::StringValue("value1".to_string());
@@ -156,12 +172,36 @@ fn write_trace(trace: &Trace, output: &mut File) {
     output.flush().unwrap()
 }
 
+struct TraceWrapper {
+    pub(self) inner: Option<TracePackets>,
+}
+
+impl TraceWrapper {
+    fn new() -> TraceWrapper {
+        Self {
+            inner: Some(TracePackets::default()),
+        }
+    }
+    fn write(&mut self) {
+        let Some(packets) = self.inner.take() else {
+            return;
+        };
+        let packets = packets.into_inner();
+        let t = Trace { packet: packets };
+        let mut buf = BytesMut::new();
+        t.encode(&mut buf).unwrap();
+        self.inner = Some(Reusable::new(&*TRACE_PACKETS_POOL, t.packet));
+    }
+}
+
 impl SpanConsumer for PerfettoReporter {
     fn consume(&mut self, spans: &[RawSpan]) {
         // TODO: Get from object pool.
         let mut trace = Trace {
+            // TODO: not sure if this is a right default ...
             packet: Vec::with_capacity(spans.len() * 2),
         };
+        let mut trace2 = TraceWrapper::new();
 
         let pid = self.pid;
         // TODO: move to elsewhere?
