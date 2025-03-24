@@ -25,6 +25,7 @@ pub struct ProcessDiscriptor {}
 
 impl Type {
     /// Return `str` representation of this type.
+    #[inline]
     pub fn type_name_str(&self) -> &'static str {
         match self {
             &Type::RunTask(_) => "run_task",
@@ -38,6 +39,7 @@ impl Type {
     /// Return `String` representation of this type.
     ///
     /// TODO: avoid string allocation for this.
+    #[inline]
     pub fn type_name_string(&self) -> String {
         String::from_str(self.type_name_str()).unwrap()
     }

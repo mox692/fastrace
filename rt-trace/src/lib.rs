@@ -1,5 +1,5 @@
 use config::Config;
-use consumer::{GLOBAL_SPAN_CONSUMER, SpanConsumer};
+use consumer::{SpanConsumer, GLOBAL_SPAN_CONSUMER};
 use span::{RawSpan, Span, Type};
 use span_queue::with_span_queue;
 use std::sync::atomic::AtomicBool;
@@ -68,20 +68,18 @@ pub fn start() {
 /// Initialize tracing.
 #[inline]
 pub fn initialize(_config: Config, consumer: impl SpanConsumer) {
+    GLOBAL_SPAN_CONSUMER.lock().unwrap().consumer = Some(Box::new(consumer));
+
     // spawn consumer thread
-
-    let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock().unwrap();
-    global_consumer.consumer = Some(Box::new(consumer));
-    drop(global_consumer);
-
     std::thread::Builder::new()
         .name("global-span-consumer".to_string())
         .spawn(move || {
             let mut vec = vec![];
             loop {
-                let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock().unwrap();
-                global_consumer.handle_commands(&mut vec);
-                drop(global_consumer);
+                GLOBAL_SPAN_CONSUMER
+                    .lock()
+                    .unwrap()
+                    .handle_commands(&mut vec);
 
                 std::thread::sleep(std::time::Duration::from_millis(100));
             }
