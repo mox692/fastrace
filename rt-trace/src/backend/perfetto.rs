@@ -125,6 +125,7 @@ fn create_debug_annotations() -> Vec<DebugAnnotation> {
     debug_annotation.name_field = Some(name_field);
     debug_annotation.value = Some(value);
 
+    // TODO: avoid allocation
     vec![debug_annotation]
 }
 
