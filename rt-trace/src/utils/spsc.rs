@@ -42,19 +42,6 @@ impl<T> Sender<T> {
 
         self.tx.push(value).map_err(|_| ChannelFull)
     }
-
-    pub fn force_send(&mut self, value: T) {
-        while let Some(value) = self.pending_messages.pop() {
-            if let Err(PushError::Full(value)) = self.tx.push(value) {
-                self.pending_messages.push(value);
-                break;
-            }
-        }
-
-        if let Err(PushError::Full(value)) = self.tx.push(value) {
-            self.pending_messages.push(value);
-        }
-    }
 }
 
 impl<T> Drop for Sender<T> {

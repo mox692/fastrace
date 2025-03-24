@@ -13,7 +13,6 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-fastrace = { path = "../fastrace", features = ["enable"] }
 fastant = "0.1"
 prost = "0.13.5"
 prost-derive = "0.13.5"

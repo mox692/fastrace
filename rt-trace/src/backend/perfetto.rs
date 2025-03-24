@@ -28,24 +28,26 @@ use std::{
     sync::{OnceLock, RwLock},
 };
 
-static INITIALIZED_SET: OnceLock<RwLock<HashSet<u64>>> = OnceLock::new();
-
 /// Reporter implementation for Perfetto tracing.
 pub struct PerfettoReporter {
+    pid: i32,
     output: File,
 }
 
 impl PerfettoReporter {
+    #[inline]
     pub fn new(path: impl AsRef<Path>) -> Self {
         Self {
+            pid: std::process::id() as i32,
             output: File::create(path.as_ref()).expect("Failed to create output file"),
         }
     }
 }
 
 /// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#DebugAnnotation
-/// TODO: use object pool to reduce the number of allocations.
+#[inline]
 fn create_debug_annotations() -> Vec<DebugAnnotation> {
+    /// TODO: use object pool to reduce the number of allocations.
     let mut debug_annotation = DebugAnnotation::default();
     let name_field = debug_annotation::NameField::Name("key1".to_string());
     let value = Value::StringValue("value1".to_string());
@@ -57,6 +59,7 @@ fn create_debug_annotations() -> Vec<DebugAnnotation> {
 }
 
 /// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#TrackEvent
+#[inline]
 fn create_track_event(
     name: Option<String>,
     track_uuid: u64,
@@ -73,6 +76,7 @@ fn create_track_event(
 }
 
 /// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#ProcessDescriptor
+#[inline]
 fn create_process_descriptor(pid: i32) -> ProcessDescriptor {
     ProcessDescriptor {
         pid: Some(pid),
@@ -81,21 +85,23 @@ fn create_process_descriptor(pid: i32) -> ProcessDescriptor {
 }
 
 /// Docs https://perfetto.dev/docs/reference/trace-packet-proto#TrackDescriptor
+#[inline]
 fn create_track_descriptor(
     uuid: u64,
-    name: Option<impl AsRef<str>>,
+    name: Option<String>,
     process: Option<ProcessDescriptor>,
     thread: Option<ThreadDescriptor>,
 ) -> TrackDescriptor {
     TrackDescriptor {
         uuid: Some(uuid),
-        static_or_dynamic_name: name.map(|s| StaticOrDynamicName::Name(s.as_ref().to_string())),
+        static_or_dynamic_name: name.map(StaticOrDynamicName::Name),
         process,
         thread,
         ..Default::default()
     }
 }
 
+#[inline]
 fn create_thread_descriptor(pid: i32, thread_id: usize, thread_name: String) -> ThreadDescriptor {
     ThreadDescriptor {
         pid: Some(pid),
@@ -104,23 +110,15 @@ fn create_thread_descriptor(pid: i32, thread_id: usize, thread_name: String) -> 
         ..Default::default()
     }
 }
-
-fn set_descriptor_initialized(track_uuid: u64) {
-    let lock = INITIALIZED_SET.get_or_init(|| RwLock::new(HashSet::new()));
-    lock.write().unwrap().insert(track_uuid);
-}
-
 /// Appends a thread descriptor packet to the trace if not already sent.
-fn append_thread_descriptor(trace: &mut Trace, track_uuid: u64) {
-    set_descriptor_initialized(track_uuid);
-
-    // TODO: avoid syscall
-    let pid = std::process::id() as i32;
-
+fn append_thread_descriptor(trace: &mut Trace, pid: i32, track_uuid: u64) {
+    // TODO: avoid string allocation
+    // TODO: get_or_insert thread name to TLS.
     let thread_descriptor =
         create_thread_descriptor(pid, track_uuid as usize, "thread_name".to_string());
     let track_descriptor = create_track_descriptor(
         track_uuid,
+        // TODO: avoid allocation
         Some("thread_name".to_string()),
         Some(create_process_descriptor(pid)),
         Some(thread_descriptor),
@@ -136,11 +134,10 @@ fn append_thread_descriptor(trace: &mut Trace, track_uuid: u64) {
     trace.packet.insert(0, packet);
 }
 
-fn append_process_descriptor(trace: &mut Trace, track_uuid: u64) {
-    let pid = std::process::id() as i32;
+fn append_process_descriptor(trace: &mut Trace, pid: i32, track_uuid: u64) {
     let process_descriptor = create_process_descriptor(pid);
     let track_descriptor =
-        create_track_descriptor(track_uuid, None::<&str>, Some(process_descriptor), None);
+        create_track_descriptor(track_uuid, None, Some(process_descriptor), None);
     let packet = TracePacket {
         data: Some(Data::TrackDescriptor(track_descriptor)),
         optional_trusted_uid: Some(OptionalTrustedUid::TrustedUid(42)),
@@ -151,6 +148,7 @@ fn append_process_descriptor(trace: &mut Trace, track_uuid: u64) {
 }
 
 /// Writes the trace to the output file.
+#[inline]
 fn write_trace(trace: &Trace, output: &mut File) {
     let mut buf = BytesMut::new();
     trace.encode(&mut buf).unwrap();
@@ -160,21 +158,22 @@ fn write_trace(trace: &Trace, output: &mut File) {
 
 impl SpanConsumer for PerfettoReporter {
     fn consume(&mut self, spans: &[RawSpan]) {
-        let mut trace = Trace::default();
+        // TODO: Get from object pool.
+        let mut trace = Trace {
+            packet: Vec::with_capacity(spans.len() * 2),
+        };
 
-        // TODO: avoid syscall
-        let pid = std::process::id() as i32;
-
-        // TODO: move to elsewhere.
+        let pid = self.pid;
+        // TODO: move to elsewhere?
         let anchor = Anchor::new();
 
         for span in spans {
             match span.typ {
                 Type::ProcessDiscriptor(_) => {
-                    append_process_descriptor(&mut trace, span.thread_id);
+                    append_process_descriptor(&mut trace, pid, span.thread_id);
                 }
                 Type::ThreadDiscriptor(_) => {
-                    append_thread_descriptor(&mut trace, span.thread_id);
+                    append_thread_descriptor(&mut trace, self.pid, span.thread_id);
                 }
                 Type::RunTask(_) => {
                     // Start event packet
