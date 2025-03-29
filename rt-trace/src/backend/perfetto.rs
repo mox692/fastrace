@@ -19,7 +19,7 @@ use fastant::Anchor;
 use fastant::Instant;
 use once_cell::sync::Lazy;
 use perfetto_protos::{
-    ProcessDescriptor, ThreadDescriptor, Trace, TracePacket, TrackDescriptor, TrackEvent,
+    ProcessDescriptor, ThreadDescriptor, TracePacket, TrackDescriptor, TrackEvent,
     trace_packet::{Data, OptionalTrustedPacketSequenceId, OptionalTrustedUid},
     track_descriptor::StaticOrDynamicName,
     track_event::{self, NameField},
@@ -147,7 +147,7 @@ fn append_thread_descriptor(trace: &mut Trace, pid: i32, track_uuid: u64) {
     };
 
     // Insert the packet at the beginning if needed
-    trace.packet.insert(0, packet);
+    trace.insert(0, packet);
 }
 
 fn append_process_descriptor(trace: &mut Trace, pid: i32, track_uuid: u64) {
@@ -160,48 +160,53 @@ fn append_process_descriptor(trace: &mut Trace, pid: i32, track_uuid: u64) {
         ..Default::default()
     };
     // Insert the packet at the beginning
-    trace.packet.insert(0, packet);
+    trace.insert(0, packet);
+}
+struct Trace {
+    pub(self) inner: TracePackets,
 }
 
-/// Writes the trace to the output file.
-#[inline]
-fn write_trace(trace: &Trace, output: &mut File) {
-    let mut buf = BytesMut::new();
-    trace.encode(&mut buf).unwrap();
-    output.write_all(&buf).unwrap();
-    output.flush().unwrap()
-}
-
-struct TraceWrapper {
-    pub(self) inner: Option<TracePackets>,
-}
-
-impl TraceWrapper {
-    fn new() -> TraceWrapper {
+impl Trace {
+    #[inline]
+    fn new() -> Self {
         Self {
-            inner: Some(TracePackets::default()),
+            inner: TracePackets::default(),
         }
     }
-    fn write(&mut self) {
-        let Some(packets) = self.inner.take() else {
-            return;
-        };
-        let packets = packets.into_inner();
-        let t = Trace { packet: packets };
-        let mut buf = BytesMut::new();
-        t.encode(&mut buf).unwrap();
-        self.inner = Some(Reusable::new(&*TRACE_PACKETS_POOL, t.packet));
+
+    #[inline]
+    fn push(&mut self, packet: TracePacket) {
+        self.inner.push(packet);
+    }
+
+    #[inline]
+    fn insert(&mut self, index: usize, packet: TracePacket) {
+        self.inner.insert(index, packet);
+    }
+
+    #[inline]
+    fn write(&mut self, output: &mut File) {
+        // The next pooled object will be temporarily assigned to `self.inner` to avoid borrowing issues.
+        let next = TracePackets::default();
+        let current = std::mem::replace(&mut self.inner, next);
+
+        let packet = current.into_inner();
+        let trace = perfetto_protos::Trace { packet };
+        // TODO: use pool
+        let mut buf = BytesMut::with_capacity(64);
+        trace.encode(&mut buf).unwrap();
+        output.write_all(&buf).unwrap();
+        output.flush().unwrap();
+
+        // The original `TracePackets` is now stored in `self.inner`, and the temporary pooled object
+        // will be dropped (injected to the pool again).
+        self.inner = Reusable::new(&*TRACE_PACKETS_POOL, trace.packet);
     }
 }
 
 impl SpanConsumer for PerfettoReporter {
     fn consume(&mut self, spans: &[RawSpan]) {
-        // TODO: Get from object pool.
-        let mut trace = Trace {
-            // TODO: not sure if this is a right default ...
-            packet: Vec::with_capacity(spans.len() * 2),
-        };
-        let mut trace2 = TraceWrapper::new();
+        let mut trace = Trace::new();
 
         let pid = self.pid;
         // TODO: move to elsewhere?
@@ -234,7 +239,7 @@ impl SpanConsumer for PerfettoReporter {
                         ..Default::default()
                     };
 
-                    trace.packet.push(start_packet);
+                    trace.push(start_packet);
 
                     // End event packet
                     let debug_annotations = create_debug_annotations();
@@ -253,7 +258,7 @@ impl SpanConsumer for PerfettoReporter {
                         ),
                         ..Default::default()
                     };
-                    trace.packet.push(end_packet);
+                    trace.push(end_packet);
                 }
                 Type::RuntimeStart(_) => {
                     unimplemented!()
@@ -264,7 +269,7 @@ impl SpanConsumer for PerfettoReporter {
             };
         }
 
-        write_trace(&trace, &mut self.output);
+        trace.write(&mut self.output);
     }
 }
 
