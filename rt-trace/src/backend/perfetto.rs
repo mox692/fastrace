@@ -277,7 +277,7 @@ impl SpanConsumer for PerfettoReporter {
 pub(crate) fn thread_descriptor() -> RawSpan {
     RawSpan {
         typ: Type::ThreadDiscriptor(ThreadDiscriptor {}),
-        thread_id: thread_id::get() as u64,
+        thread_id: crate::utils::thread_id::get() as u64,
         start: Instant::ZERO,
         end: Instant::ZERO,
     }
@@ -287,7 +287,7 @@ pub(crate) fn thread_descriptor() -> RawSpan {
 pub(crate) fn process_descriptor() -> RawSpan {
     RawSpan {
         typ: Type::ProcessDiscriptor(ProcessDiscriptor {}),
-        thread_id: thread_id::get() as u64,
+        thread_id: crate::utils::thread_id::get() as u64,
         start: Instant::ZERO,
         end: Instant::ZERO,
     }

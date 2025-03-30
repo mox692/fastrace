@@ -18,23 +18,17 @@ fn single_thread() {
     let jh = std::thread::spawn(|| {
         // Start tracing
         {
-            let _guard = span(
-                span::Type::RunTask(RunTask {
-                    name: Some("task1".to_string()),
-                    ..Default::default()
-                }),
-                thread_id::get() as u64,
-            );
+            let _guard = span(span::Type::RunTask(RunTask {
+                name: Some("task1".to_string()),
+                ..Default::default()
+            }));
             std::thread::sleep(std::time::Duration::from_micros(100));
         }
         {
-            let _guard = span(
-                span::Type::RunTask(RunTask {
-                    name: Some("task2".to_string()),
-                    ..Default::default()
-                }),
-                thread_id::get() as u64,
-            );
+            let _guard = span(span::Type::RunTask(RunTask {
+                name: Some("task2".to_string()),
+                ..Default::default()
+            }));
             std::thread::sleep(std::time::Duration::from_micros(100));
         }
     });
@@ -53,27 +47,21 @@ fn multi_thread() {
 
     let num_threads = 10;
     let mut handles = vec![];
-    for i in 0..num_threads {
+    for _ in 0..num_threads {
         let handle = std::thread::spawn(move || {
             // Start tracing
             {
-                let _guard = span(
-                    span::Type::RunTask(RunTask {
-                        name: Some("task1".to_string()),
-                        ..Default::default()
-                    }),
-                    thread_id::get() as u64,
-                );
+                let _guard = span(span::Type::RunTask(RunTask {
+                    name: Some("task1".to_string()),
+                    ..Default::default()
+                }));
                 std::thread::sleep(std::time::Duration::from_micros(100));
             }
             {
-                let _guard = span(
-                    span::Type::RunTask(RunTask {
-                        name: Some("task2".to_string()),
-                        ..Default::default()
-                    }),
-                    thread_id::get() as u64,
-                );
+                let _guard = span(span::Type::RunTask(RunTask {
+                    name: Some("task2".to_string()),
+                    ..Default::default()
+                }));
                 std::thread::sleep(std::time::Duration::from_micros(100));
             }
         });

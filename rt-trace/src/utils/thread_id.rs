@@ -33,6 +33,10 @@ extern crate libc;
 #[cfg(windows)]
 extern crate windows_sys;
 
+thread_local! {
+    static THREAD_ID: usize = get_internal()
+}
+
 /// Returns a number that is unique to the calling thread.
 ///
 /// Calling this function twice from the same thread will return the same
@@ -40,7 +44,7 @@ extern crate windows_sys;
 /// different number.
 #[inline]
 pub(crate) fn get() -> usize {
-    get_internal()
+    THREAD_ID.with(|inner| *inner)
 }
 
 #[cfg(all(

@@ -1,8 +1,9 @@
 use config::Config;
-use consumer::{SpanConsumer, GLOBAL_SPAN_CONSUMER};
+use consumer::{GLOBAL_SPAN_CONSUMER, SpanConsumer};
 use span::{RawSpan, Span, Type};
 use span_queue::with_span_queue;
 use std::sync::atomic::AtomicBool;
+use utils::thread_id;
 pub mod backend;
 pub(crate) mod command;
 pub mod config;
@@ -28,13 +29,13 @@ fn set_enabled(set: bool) {
 
 /// Create a span.
 #[inline]
-pub fn span(typ: Type, thread_id: u64) -> Span {
+pub fn span(typ: Type) -> Span {
     with_span_queue(|span_queue| {
         if enabled() {
             Span {
                 inner: Some(RawSpan {
                     typ,
-                    thread_id,
+                    thread_id: thread_id::get() as u64,
                     start: Instant::now(),
                     end: Instant::ZERO,
                 }),
