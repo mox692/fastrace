@@ -19,7 +19,9 @@ pub struct RuntimeStart {}
 #[derive(Debug)]
 pub struct RuntimeTerminate {}
 #[derive(Debug)]
-pub struct ThreadDiscriptor {}
+pub struct ThreadDiscriptor {
+    pub(crate) thread_name: String,
+}
 #[derive(Debug)]
 pub struct ProcessDiscriptor {}
 

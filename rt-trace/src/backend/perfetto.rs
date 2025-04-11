@@ -127,15 +127,20 @@ fn create_thread_descriptor(pid: i32, thread_id: usize, thread_name: String) -> 
     }
 }
 /// Appends a thread descriptor packet to the trace if not already sent.
-fn append_thread_descriptor(trace: &mut Trace, pid: i32, track_uuid: u64) {
+fn append_thread_descriptor(
+    trace: &mut Trace,
+    thread_info: &crate::span::ThreadDiscriptor,
+    pid: i32,
+    track_uuid: u64,
+) {
     // TODO: avoid string allocation
     // TODO: get_or_insert thread name to TLS.
-    let thread_descriptor =
-        create_thread_descriptor(pid, track_uuid as usize, "thread_name".to_string());
+    let thread_name = thread_info.thread_name.clone();
+    let thread_descriptor = create_thread_descriptor(pid, track_uuid as usize, thread_name.clone());
     let track_descriptor = create_track_descriptor(
         track_uuid,
         // TODO: avoid allocation
-        Some("thread_name".to_string()),
+        Some(thread_name),
         Some(create_process_descriptor(pid)),
         Some(thread_descriptor),
     );
@@ -213,12 +218,12 @@ impl SpanConsumer for PerfettoReporter {
         let anchor = Anchor::new();
 
         for span in spans {
-            match span.typ {
+            match &span.typ {
                 Type::ProcessDiscriptor(_) => {
                     append_process_descriptor(&mut trace, pid, span.thread_id);
                 }
-                Type::ThreadDiscriptor(_) => {
-                    append_thread_descriptor(&mut trace, self.pid, span.thread_id);
+                Type::ThreadDiscriptor(d) => {
+                    append_thread_descriptor(&mut trace, d, self.pid, span.thread_id);
                 }
                 Type::RunTask(_) => {
                     // Start event packet
@@ -275,8 +280,14 @@ impl SpanConsumer for PerfettoReporter {
 
 /// This is called when a SpanQueue at local storage gets initialized.
 pub(crate) fn thread_descriptor() -> RawSpan {
+    let thread_id = crate::utils::thread_id::get() as u64;
     RawSpan {
-        typ: Type::ThreadDiscriptor(ThreadDiscriptor {}),
+        typ: Type::ThreadDiscriptor(ThreadDiscriptor {
+            thread_name: std::thread::current()
+                .name()
+                .map(|str| str.into())
+                .unwrap_or(format!("{thread_id}")),
+        }),
         thread_id: crate::utils::thread_id::get() as u64,
         start: Instant::ZERO,
         end: Instant::ZERO,
