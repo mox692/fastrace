@@ -10,6 +10,7 @@ fn fastrace_harness(n: usize) {
     use fastrace::prelude::*;
 
     let root = Span::root("parent", SpanContext::new(TraceId(12), SpanId::default()));
+    let dur = std::time::Instant::now();
     for i in 0..(n / 10000) {
         // We have to flush spans stored in SpanQueue for every 10240 iteration.
         let _g = root.set_local_parent();
@@ -17,13 +18,19 @@ fn fastrace_harness(n: usize) {
             let _guard = LocalSpan::enter_with_local_parent("child");
         }
     }
+    let dur = dur.elapsed();
+
+    println!("dur: {:?}", dur);
 }
 
 fn rt_trace_harness(n: usize) {
     fn dummy_fastrace(n: usize) {
+        let dur = std::time::Instant::now();
         for _ in 0..n {
-            let _guard = span(span::Type::RunTask(RunTask {}), 12);
+            let _guard = span(span::Type::RunTask(RunTask::default()));
         }
+        let dur = dur.elapsed();
+        println!("dur: {:?}", dur);
     }
     dummy_fastrace(n);
 }
@@ -60,6 +67,6 @@ fn run_fastrace(n: usize) {
 }
 
 fn main() {
-    // run_fastrace(1000000);
-    run_rt_trace(100000);
+    run_rt_trace(10000000);
+    run_fastrace(10000000);
 }

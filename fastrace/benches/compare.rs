@@ -89,7 +89,7 @@ fn fastrace_harness(n: usize) {
 fn rt_trace_harness(n: usize) {
     fn dummy_fastrace(n: usize) {
         for _ in 0..n {
-            let _guard = span(span::Type::RunTask(RunTask::default()), 12);
+            let _guard = span(span::Type::RunTask(RunTask::default()));
         }
     }
     dummy_fastrace(n);
