@@ -2,13 +2,13 @@ use crate::{
     backend::perfetto::process_descriptor,
     command::Command,
     span::RawSpan,
-    utils::spsc::{bounded, Receiver, Sender},
+    utils::spsc::{Receiver, Sender, bounded},
 };
 use std::{
     cell::UnsafeCell,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Mutex,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
@@ -68,23 +68,24 @@ impl GlobalSpanConsumer {
         let rxs: Vec<Receiver<Command>> = guard.drain(..).collect();
         drop(guard);
 
+        let Some(consumer) = &mut self.consumer else {
+            panic!("Consumer should be set");
+        };
+
         // Required for perfetto tracing.
         // TODO: Can we put this logic elsewhere?
         if !flushed_once() {
-            spans.push(process_descriptor());
+            consumer.as_mut().consume(&[process_descriptor()]);
             set_flushed_once(true);
         }
 
         for mut rx in rxs {
             while let Ok(Some(Command::SendSpans(span))) = rx.try_recv() {
-                spans.extend(span);
+                // Currently we perform `consume` everytime we get a receiver. This ensures
+                // that the size of the span is less than `DEFAULT_SPAN_QUEUE_SIZE`, making it
+                // easy to evaluate the load.
+                consumer.as_mut().consume(span.as_slice());
             }
         }
-
-        let Some(consumer) = &mut self.consumer else {
-            panic!("Consumer should be set");
-        };
-
-        consumer.as_mut().consume(spans.as_slice());
     }
 }

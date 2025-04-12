@@ -10,6 +10,7 @@ use crate::consumer::SpanConsumer;
 use crate::span::ProcessDiscriptor;
 use crate::span::RawSpan;
 use crate::span::ThreadDiscriptor;
+use crate::span_queue::DEFAULT_BATCH_SIZE;
 use crate::utils::object_pool::Pool;
 use crate::utils::object_pool::Puller;
 use crate::utils::object_pool::Reusable;
@@ -27,20 +28,27 @@ use perfetto_protos::{
 use prost::Message;
 use std::{fs::File, io::Write, path::Path};
 
-static TRACE_PACKETS_POOL: Lazy<Pool<Vec<TracePacket>>> =
-    Lazy::new(|| Pool::new(Vec::new, Vec::clear));
+fn init() -> Vec<TracePacket> {
+    vec![TracePacket::default(); DEFAULT_BATCH_SIZE * 2]
+}
+
+fn clear(_vec: &mut Vec<TracePacket>) {
+    // do nothing
+}
+
+static TRACE_PACKETS_POOL: Lazy<Pool<Vec<TracePacket>>> = Lazy::new(|| Pool::new(init, clear));
 
 thread_local! {
     static TRACE_PACKETS_PULLER: RefCell<Puller<'static, Vec<TracePacket>>> = RefCell::new(TRACE_PACKETS_POOL.puller(2));
 }
 
-pub type TracePackets = Reusable<'static, Vec<TracePacket>>;
+struct TracePackets(pub(crate) Reusable<'static, Vec<TracePacket>>);
 
 impl Default for TracePackets {
     fn default() -> Self {
         TRACE_PACKETS_PULLER
-            .try_with(|puller| puller.borrow_mut().pull())
-            .unwrap_or_else(|_| Reusable::new(&*TRACE_PACKETS_POOL, vec![]))
+            .try_with(|puller| TracePackets(puller.borrow_mut().pull()))
+            .unwrap_or_else(|_| TracePackets(Reusable::new(&*TRACE_PACKETS_POOL, init())))
     }
 }
 
@@ -128,7 +136,7 @@ fn create_thread_descriptor(pid: i32, thread_id: usize, thread_name: String) -> 
 }
 /// Appends a thread descriptor packet to the trace if not already sent.
 fn append_thread_descriptor(
-    trace: &mut Trace,
+    trace: &mut TracePacket,
     thread_info: &crate::span::ThreadDiscriptor,
     pid: i32,
     track_uuid: u64,
@@ -145,27 +153,19 @@ fn append_thread_descriptor(
         Some(thread_descriptor),
     );
 
-    let packet = TracePacket {
-        data: Some(Data::TrackDescriptor(track_descriptor)),
-        optional_trusted_uid: Some(OptionalTrustedUid::TrustedUid(42)),
-        ..Default::default()
-    };
-
-    // Insert the packet at the beginning if needed
-    trace.insert(0, packet);
+    trace.data = Some(Data::TrackDescriptor(track_descriptor));
+    trace.optional_trusted_uid = Some(OptionalTrustedUid::TrustedUid(42));
 }
 
-fn append_process_descriptor(trace: &mut Trace, pid: i32, track_uuid: u64) {
+fn append_process_descriptor(trace: &mut TracePacket, pid: i32, track_uuid: u64) {
     let process_descriptor = create_process_descriptor(pid);
     let track_descriptor =
         create_track_descriptor(track_uuid, None, Some(process_descriptor), None);
-    let packet = TracePacket {
-        data: Some(Data::TrackDescriptor(track_descriptor)),
-        optional_trusted_uid: Some(OptionalTrustedUid::TrustedUid(42)),
-        ..Default::default()
-    };
+
+    trace.data = Some(Data::TrackDescriptor(track_descriptor));
+    trace.optional_trusted_uid = Some(OptionalTrustedUid::TrustedUid(42));
     // Insert the packet at the beginning
-    trace.insert(0, packet);
+    // trace.insert(0, packet);
 }
 struct Trace {
     pub(self) inner: TracePackets,
@@ -180,13 +180,8 @@ impl Trace {
     }
 
     #[inline]
-    fn push(&mut self, packet: TracePacket) {
-        self.inner.push(packet);
-    }
-
-    #[inline]
     fn insert(&mut self, index: usize, packet: TracePacket) {
-        self.inner.insert(index, packet);
+        self.inner.0.insert(index, packet);
     }
 
     #[inline]
@@ -195,7 +190,7 @@ impl Trace {
         let next = TracePackets::default();
         let current = std::mem::replace(&mut self.inner, next);
 
-        let packet = current.into_inner();
+        let packet = current.0.into_inner();
         let trace = perfetto_protos::Trace { packet };
         // TODO: use pool
         let mut buf = BytesMut::with_capacity(64);
@@ -205,7 +200,7 @@ impl Trace {
 
         // The original `TracePackets` is now stored in `self.inner`, and the temporary pooled object
         // will be dropped (injected to the pool again).
-        self.inner = Reusable::new(&*TRACE_PACKETS_POOL, trace.packet);
+        self.inner = TracePackets(Reusable::new(&*TRACE_PACKETS_POOL, trace.packet));
     }
 }
 
@@ -217,13 +212,21 @@ impl SpanConsumer for PerfettoReporter {
         // TODO: move to elsewhere?
         let anchor = Anchor::new();
 
+        let mut packets = trace.inner.0.into_inner();
+        let mut index = 0;
         for span in spans {
+            // SAFETY: it is garantee that index is less that 1024 and packets have 1024 len
+            let packet = unsafe { packets.get_unchecked_mut(index) };
             match &span.typ {
                 Type::ProcessDiscriptor(_) => {
-                    append_process_descriptor(&mut trace, pid, span.thread_id);
+                    append_process_descriptor(packet, pid, span.thread_id);
+                    packets.swap(0, index);
+                    index += 1;
                 }
                 Type::ThreadDiscriptor(d) => {
-                    append_thread_descriptor(&mut trace, d, self.pid, span.thread_id);
+                    append_thread_descriptor(packet, d, self.pid, span.thread_id);
+                    packets.swap(0, index);
+                    index += 1;
                 }
                 Type::RunTask(_) => {
                     // Start event packet
@@ -234,17 +237,13 @@ impl SpanConsumer for PerfettoReporter {
                         Some(track_event::Type::SliceBegin),
                         debug_annotations,
                     );
-                    let start_packet = TracePacket {
-                        data: Some(Data::TrackEvent(start_event)),
-                        trusted_pid: Some(pid),
-                        timestamp: Some(span.start.as_unix_nanos(&anchor)),
-                        optional_trusted_packet_sequence_id: Some(
-                            OptionalTrustedPacketSequenceId::TrustedPacketSequenceId(42),
-                        ),
-                        ..Default::default()
-                    };
+                    packet.data = Some(Data::TrackEvent(start_event));
+                    packet.timestamp = Some(span.start.as_unix_nanos(&anchor));
+                    packet.optional_trusted_packet_sequence_id =
+                        Some(OptionalTrustedPacketSequenceId::TrustedPacketSequenceId(42));
 
-                    trace.push(start_packet);
+                    index += 1;
+                    let packet = unsafe { packets.get_unchecked_mut(index) };
 
                     // End event packet
                     let debug_annotations = create_debug_annotations();
@@ -254,16 +253,14 @@ impl SpanConsumer for PerfettoReporter {
                         Some(track_event::Type::SliceEnd),
                         debug_annotations,
                     );
-                    let end_packet = TracePacket {
-                        data: Some(Data::TrackEvent(end_event)),
-                        trusted_pid: Some(pid),
-                        timestamp: Some(span.end.as_unix_nanos(&anchor)),
-                        optional_trusted_packet_sequence_id: Some(
-                            OptionalTrustedPacketSequenceId::TrustedPacketSequenceId(42),
-                        ),
-                        ..Default::default()
-                    };
-                    trace.push(end_packet);
+
+                    packet.data = Some(Data::TrackEvent(end_event));
+                    packet.trusted_pid = Some(pid);
+                    packet.timestamp = Some(span.end.as_unix_nanos(&anchor));
+                    packet.optional_trusted_packet_sequence_id =
+                        Some(OptionalTrustedPacketSequenceId::TrustedPacketSequenceId(42));
+
+                    index += 1;
                 }
                 Type::RuntimeStart(_) => {
                     unimplemented!()
@@ -274,6 +271,9 @@ impl SpanConsumer for PerfettoReporter {
             };
         }
 
+        unsafe { packets.set_len(index) };
+
+        trace.inner = TracePackets(Reusable::new(&*TRACE_PACKETS_POOL, packets));
         trace.write(&mut self.output);
     }
 }
