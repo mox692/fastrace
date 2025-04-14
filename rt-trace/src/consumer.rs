@@ -63,7 +63,7 @@ impl GlobalSpanConsumer {
         Self { consumer: None }
     }
 
-    pub(crate) fn handle_commands(&mut self, spans: &mut Vec<RawSpan>) {
+    pub(crate) fn handle_commands(&mut self) {
         let mut guard = SPSC_RXS.lock().unwrap();
         let rxs: Vec<Receiver<Command>> = guard.drain(..).collect();
         drop(guard);

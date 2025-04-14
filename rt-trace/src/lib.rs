@@ -75,12 +75,8 @@ pub fn initialize(_config: Config, consumer: impl SpanConsumer) {
     std::thread::Builder::new()
         .name("global-span-consumer".to_string())
         .spawn(move || {
-            let mut vec = vec![];
             loop {
-                GLOBAL_SPAN_CONSUMER
-                    .lock()
-                    .unwrap()
-                    .handle_commands(&mut vec);
+                GLOBAL_SPAN_CONSUMER.lock().unwrap().handle_commands();
 
                 std::thread::sleep(std::time::Duration::from_millis(100));
             }
@@ -98,7 +94,7 @@ pub fn initialize(_config: Config, consumer: impl SpanConsumer) {
 pub fn flush() {
     let handle = std::thread::spawn(|| {
         let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock().unwrap();
-        global_consumer.handle_commands(&mut vec![]);
+        global_consumer.handle_commands();
     });
 
     handle.join().unwrap()
