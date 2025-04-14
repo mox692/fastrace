@@ -1,6 +1,5 @@
 // Copyright 2020 TiKV Project Authors. Licensed under Apache-2.0.
 
-use std::cell::Cell;
 use std::fmt;
 use std::mem::ManuallyDrop;
 use std::ops::Deref;
@@ -9,14 +8,6 @@ use std::ops::DerefMut;
 // TODO: compare
 // use parking_lot::Mutex;
 use std::sync::Mutex;
-
-thread_local! {
-    static REUSABLE: Cell<bool> = const { Cell::new(false) };
-}
-
-fn is_reusable() -> bool {
-    REUSABLE.with(|r| r.get())
-}
 
 pub struct Pool<T> {
     // The objects in the pool ready to be reused.
@@ -62,10 +53,8 @@ impl<T> Pool<T> {
 
     #[inline]
     pub fn recycle(&self, mut obj: T) {
-        if is_reusable() {
-            (self.reset)(&mut obj);
-            self.objects.lock().unwrap().push(obj)
-        }
+        (self.reset)(&mut obj);
+        self.objects.lock().unwrap().push(obj)
     }
 }
 
