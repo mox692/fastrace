@@ -197,7 +197,7 @@ impl Trace {
 
         let mut trace = perfetto_protos::Trace { packet };
         // TODO: use pool
-        let mut buf = BytesMut::with_capacity(64);
+        let mut buf = BytesMut::with_capacity(DEFAULT_BATCH_SIZE * 2);
         trace.encode(&mut buf).unwrap();
         output.write_all(&buf).unwrap();
         output.flush().unwrap();
