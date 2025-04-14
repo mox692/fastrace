@@ -164,8 +164,6 @@ fn append_process_descriptor(trace: &mut TracePacket, pid: i32, track_uuid: u64)
 
     trace.data = Some(Data::TrackDescriptor(track_descriptor));
     trace.optional_trusted_uid = Some(OptionalTrustedUid::TrustedUid(42));
-    // Insert the packet at the beginning
-    // trace.insert(0, packet);
 }
 struct Trace {
     pub(self) inner: TracePackets,
@@ -250,9 +248,9 @@ impl SpanConsumer for PerfettoReporter {
                         Some(OptionalTrustedPacketSequenceId::TrustedPacketSequenceId(42));
 
                     num_packets += 1;
-                    let packet = unsafe { packets.get_unchecked_mut(num_packets) };
 
                     // End event packet
+                    let packet = unsafe { packets.get_unchecked_mut(num_packets) };
                     let debug_annotations = create_debug_annotations();
                     let end_event = create_track_event(
                         None,
