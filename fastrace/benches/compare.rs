@@ -1,4 +1,4 @@
-// Copyright 2020 TiKV Project Authors. Licensed under Apache-2.0.
+use std::sync::OnceLock;
 
 use criterion::criterion_group;
 use criterion::criterion_main;
@@ -10,24 +10,115 @@ use rt_trace::span;
 use rt_trace::span::RunTask;
 use rt_trace::start;
 
-fn init_opentelemetry() {
+fn main() {
+    divan::main();
+}
+
+#[divan::bench_group(name = "single thread")]
+mod single_thread {
+    use super::*;
+
+    #[divan::bench(args = [1, 10, 100, 1000, 10000])]
+    fn tokio_tracing(bencher: Bencher, n: usize) {
+        init_tokio_tracing();
+
+        bencher.bench(|| tokio_tracing_harness(n));
+    }
+
+    #[divan::bench(args = [1, 10, 100, 1000, 10000])]
+    fn fastrace(bencher: Bencher, n: usize) {
+        init_fastrace();
+
+        bencher.bench(|| fastrace_harness(n));
+    }
+}
+
+#[divan::bench_group(name = "multi threads")]
+mod multi_thread {
+    use super::*;
+
+    #[divan::bench(args = [1, 10, 100, 1000, 10000])]
+    fn tokio_tracing(bencher: Bencher, n: usize) {
+        init_tokio_tracing();
+
+        let parallelism = std::thread::available_parallelism().unwrap().get() - 1;
+
+        bencher.bench(|| {
+            let handles: Vec<_> = (0..parallelism)
+                .map(|_| std::thread::spawn(move || tokio_tracing_harness(n)))
+                .collect();
+
+            for handle in handles {
+                handle.join().unwrap();
+            }
+        });
+    }
+
+    #[divan::bench(args = [1, 10, 100, 1000, 10000])]
+    fn fastrace(bencher: Bencher, n: usize) {
+        init_fastrace();
+
+        let parallelism = std::thread::available_parallelism().unwrap().get() - 1;
+
+        bencher.bench(|| {
+            let handles: Vec<_> = (0..parallelism)
+                .map(|_| std::thread::spawn(move || fastrace_harness(n)))
+                .collect();
+
+            for handle in handles {
+                handle.join().unwrap();
+            }
+        });
+    }
+}
+
+fn make_span_exporter() -> opentelemetry_otlp::SpanExporter {
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let exporter = rt.block_on(async {
+        opentelemetry_otlp::SpanExporter::builder()
+            .with_tonic()
+            .build()
+            .unwrap()
+    });
+    std::mem::forget(rt);
+    exporter
+}
+
+fn init_tokio_tracing() {
+    use opentelemetry::trace::TracerProvider;
     use tracing_subscriber::prelude::*;
 
-    let opentelemetry = tracing_opentelemetry::layer();
-    tracing_subscriber::registry()
-        .with(opentelemetry)
-        .try_init()
-        .unwrap();
+    static INIT: OnceLock<()> = OnceLock::new();
+    INIT.get_or_init(|| {
+        let exporter = make_span_exporter();
+        let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+            .with_batch_exporter(exporter)
+            .build();
+        let tracer = provider.tracer("tracing-otel-subscriber");
+        tracing_subscriber::registry()
+            .with(tracing_opentelemetry::OpenTelemetryLayer::new(tracer))
+            .init();
+    });
 }
 
 fn init_fastrace() {
-    struct DummyReporter;
+    use std::borrow::Cow;
 
-    impl fastrace::collector::Reporter for DummyReporter {
-        fn report(&mut self, _spans: Vec<fastrace::prelude::SpanRecord>) {}
-    }
+    static INIT: OnceLock<()> = OnceLock::new();
+    INIT.get_or_init(|| {
+        let exporter = make_span_exporter();
+        let reporter = fastrace_opentelemetry::OpenTelemetryReporter::new(
+            exporter,
+            opentelemetry::trace::SpanKind::Server,
+            Cow::Owned(opentelemetry_sdk::Resource::builder().build()),
+            opentelemetry::InstrumentationScope::builder("example-crate").build(),
+        );
 
-    fastrace::set_reporter(DummyReporter, fastrace::collector::Config::default());
+        fastrace::set_reporter(reporter, fastrace::collector::Config::default());
+    });
 }
 
 fn init_rt_trace() {
@@ -52,25 +143,7 @@ fn opentelemetry_harness(n: usize) {
     let root = tracing::span!(tracing::Level::TRACE, "parent");
     let _enter = root.enter();
 
-    dummy_opentelementry(n);
-}
-
-fn rustracing_harness(n: usize) {
-    fn dummy_rustracing(n: usize, span: &rustracing::span::Span<()>) {
-        for _ in 0..n {
-            let _child_span = span.child("child", |c| c.start_with_state(()));
-        }
-    }
-
-    let (span_tx, span_rx) = crossbeam::channel::bounded(1000);
-
-    {
-        let tracer = rustracing::Tracer::with_sender(rustracing::sampler::AllSampler, span_tx);
-        let parent_span = tracer.span("parent").start_with_state(());
-        dummy_rustracing(n, &parent_span);
-    }
-
-    let _r = span_rx.iter().collect::<Vec<_>>();
+    dummy_tokio_tracing(n);
 }
 
 fn fastrace_harness(n: usize) {

@@ -28,7 +28,6 @@ use crate::local::local_collector::LocalSpansInner;
 use crate::local::raw_span::RawKind;
 use crate::local::raw_span::RawSpan;
 use crate::util::CollectToken;
-use crate::util::object_pool;
 use crate::util::spsc::Receiver;
 use crate::util::spsc::Sender;
 use crate::util::spsc::{self};
@@ -170,11 +169,14 @@ impl GlobalCollect {
     // * Copy `SpanSet` to the same number of copies as `CollectTokenItem`s, one `SpanSet` to one
     //   `CollectTokenItem`
     // * Amend `raw_span.parent_id` of root spans in `SpanSet` to `parent_ids` of `CollectTokenItem`
-    pub fn submit_spans(&self, spans: SpanSet, collect_token: CollectToken) {
-        send_command(CollectCommand::SubmitSpans(SubmitSpans {
-            spans,
-            collect_token,
-        }));
+    pub fn submit_spans(&self, spans: SpanSet, mut collect_token: CollectToken) {
+        collect_token.retain(|item| item.is_sampled);
+        if !collect_token.is_empty() {
+            send_command(CollectCommand::SubmitSpans(SubmitSpans {
+                spans,
+                collect_token,
+            }));
+        }
     }
 }
 
@@ -194,7 +196,6 @@ enum SpanCollection {
 #[derive(Default)]
 struct ActiveCollector {
     span_collections: Vec<SpanCollection>,
-    span_count: usize,
     danglings: HashMap<SpanId, Vec<DanglingItem>>,
 }
 
@@ -210,6 +211,7 @@ pub(crate) struct GlobalCollector {
     drop_collects: Vec<DropCollect>,
     commit_collects: Vec<CommitCollect>,
     submit_spans: Vec<SubmitSpans>,
+    stale_spans: Vec<SpanCollection>,
 }
 
 impl GlobalCollector {
@@ -220,10 +222,11 @@ impl GlobalCollector {
 
             active_collectors: HashMap::new(),
 
-            start_collects: Vec::new(),
-            drop_collects: Vec::new(),
-            commit_collects: Vec::new(),
-            submit_spans: Vec::new(),
+            start_collects: vec![],
+            drop_collects: vec![],
+            commit_collects: vec![],
+            submit_spans: vec![],
+            stale_spans: vec![],
         };
 
         *GLOBAL_COLLECTOR.lock() = Some(global_collector);
@@ -248,17 +251,17 @@ impl GlobalCollector {
     }
 
     fn handle_commands(&mut self) {
-        object_pool::enable_reuse_in_current_thread();
-
         debug_assert!(self.start_collects.is_empty());
         debug_assert!(self.drop_collects.is_empty());
         debug_assert!(self.commit_collects.is_empty());
         debug_assert!(self.submit_spans.is_empty());
+        debug_assert!(self.stale_spans.is_empty());
 
         let start_collects = &mut self.start_collects;
         let drop_collects = &mut self.drop_collects;
         let commit_collects = &mut self.commit_collects;
         let submit_spans = &mut self.submit_spans;
+        let stale_spans = &mut self.stale_spans;
 
         {
             SPSC_RXS.lock().retain_mut(|rx| {
@@ -310,40 +313,38 @@ impl GlobalCollector {
             if collect_token.len() == 1 {
                 let item = collect_token[0];
                 if let Some(active_collector) = self.active_collectors.get_mut(&item.collect_id) {
-                    if active_collector.span_count
-                        < self.config.max_spans_per_trace.unwrap_or(usize::MAX)
-                        || item.is_root
-                    {
-                        active_collector.span_count += spans.len();
-                        active_collector
-                            .span_collections
-                            .push(SpanCollection::Owned {
-                                spans,
-                                trace_id: item.trace_id,
-                                parent_id: item.parent_id,
-                            });
-                    }
+                    active_collector
+                        .span_collections
+                        .push(SpanCollection::Owned {
+                            spans,
+                            trace_id: item.trace_id,
+                            parent_id: item.parent_id,
+                        });
+                } else if !self.config.cancelable {
+                    stale_spans.push(SpanCollection::Owned {
+                        spans,
+                        trace_id: item.trace_id,
+                        parent_id: item.parent_id,
+                    });
                 }
             } else {
                 let spans = Arc::new(spans);
-                for item in collect_token.iter() {
+                for item in &collect_token {
                     if let Some(active_collector) = self.active_collectors.get_mut(&item.collect_id)
                     {
-                        // Multiple items in a collect token are built from
-                        // `Span::enter_from_parents`, so relative span
-                        // cannot be a root span.
-                        if active_collector.span_count
-                            < self.config.max_spans_per_trace.unwrap_or(usize::MAX)
-                        {
-                            active_collector.span_count += spans.len();
-                            active_collector
-                                .span_collections
-                                .push(SpanCollection::Shared {
-                                    spans: spans.clone(),
-                                    trace_id: item.trace_id,
-                                    parent_id: item.parent_id,
-                                });
-                        }
+                        active_collector
+                            .span_collections
+                            .push(SpanCollection::Shared {
+                                spans: spans.clone(),
+                                trace_id: item.trace_id,
+                                parent_id: item.parent_id,
+                            });
+                    } else if !self.config.cancelable {
+                        stale_spans.push(SpanCollection::Shared {
+                            spans: spans.clone(),
+                            trace_id: item.trace_id,
+                            parent_id: item.parent_id,
+                        });
                     }
                 }
             }
@@ -363,7 +364,7 @@ impl GlobalCollector {
             }
         }
 
-        if self.config.report_before_root_finish {
+        if !self.config.cancelable {
             for active_collector in self.active_collectors.values_mut() {
                 postprocess_span_collection(
                     active_collector.span_collections.drain(..),
@@ -372,6 +373,15 @@ impl GlobalCollector {
                     &mut active_collector.danglings,
                 );
             }
+        }
+
+        for spans in stale_spans.drain(..) {
+            postprocess_span_collection(
+                [spans],
+                &anchor,
+                &mut committed_records,
+                &mut HashMap::new(),
+            );
         }
 
         self.reporter.as_mut().unwrap().report(committed_records);
@@ -510,7 +520,7 @@ fn amend_local_span(
                     properties: span
                         .properties
                         .as_ref()
-                        .map(|p| (*p).clone())
+                        .map(|p| p.to_vec())
                         .unwrap_or_default(),
                     events: vec![],
                 });
@@ -523,7 +533,7 @@ fn amend_local_span(
                     properties: span
                         .properties
                         .as_ref()
-                        .map(|p| (*p).clone())
+                        .map(|p| p.to_vec())
                         .unwrap_or_default(),
                 };
                 dangling
@@ -538,7 +548,7 @@ fn amend_local_span(
                     .push(DanglingItem::Properties(
                         span.properties
                             .as_ref()
-                            .map(|p| (*p).clone())
+                            .map(|p| p.to_vec())
                             .unwrap_or_default(),
                     ));
             }
@@ -568,7 +578,7 @@ fn amend_span(
                 properties: span
                     .properties
                     .as_ref()
-                    .map(|p| (*p).clone())
+                    .map(|p| p.to_vec())
                     .unwrap_or_default(),
                 events: vec![],
             });
@@ -581,7 +591,7 @@ fn amend_span(
                 properties: span
                     .properties
                     .as_ref()
-                    .map(|p| (*p).clone())
+                    .map(|p| p.to_vec())
                     .unwrap_or_default(),
             };
             dangling
@@ -596,7 +606,7 @@ fn amend_span(
                 .push(DanglingItem::Properties(
                     span.properties
                         .as_ref()
-                        .map(|p| (*p).clone())
+                        .map(|p| p.to_vec())
                         .unwrap_or_default(),
                 ));
         }
@@ -620,16 +630,6 @@ fn mount_danglings(records: &mut [SpanRecord], danglings: &mut HashMap<SpanId, V
                     }
                 }
             }
-        }
-    }
-}
-
-impl SpanSet {
-    fn len(&self) -> usize {
-        match self {
-            SpanSet::LocalSpansInner(local_spans) => local_spans.spans.len(),
-            SpanSet::SharedLocalSpans(local_spans) => local_spans.spans.len(),
-            SpanSet::Span(_) => 1,
         }
     }
 }

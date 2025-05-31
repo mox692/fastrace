@@ -7,8 +7,7 @@ members = [
   "fastrace-opentelemetry",
   "fastrace-futures",
   "fastrace-perfetto",
-  "rt-trace",
-  "test-statically-disable",
+  "rt-trace"
 ]
 resolver = "2"
 
@@ -16,12 +15,12 @@ resolver = "2"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/fast/fastrace"
-rust-version = "1.75"
+rust-version = "1.80.0"
 
 [workspace.dependencies]
 # workspace dependencies
-fastrace = { version = "0.7.8", path = "fastrace" }
-fastrace-macro = { version = "0.7.8", path = "fastrace-macro" }
+fastrace = { version = "0.7.9", path = "fastrace" }
+fastrace-macro = { version = "0.7.9", path = "fastrace-macro" }
 
 # workspace leaves
 fastrace-datadog = { path = "fastrace-datadog" }
@@ -31,8 +30,14 @@ fastrace-perfetto = { path = "fastrace-perfetto" }
 fastrace-opentelemetry = { path = "fastrace-opentelemetry" }
 
 # crates.io dependencies
-log = { version = "0.4" }
+log = { version = "0.4.27" }
+opentelemetry = { version = "0.29.0", default-features = false, features = ["trace"] }
+opentelemetry-otlp = { version = "0.29.0", default-features = false, features = ["trace", "grpc-tonic"] }
+opentelemetry_sdk = { version = "0.29.0", default-features = false, features = ["trace"] }
 serde = { version = "1.0", features = ["derive"] }
+
+# test dependencies
+tokio = { version = "1.45.0", features = ["full"] }
 
 [profile.bench]
 lto = true
