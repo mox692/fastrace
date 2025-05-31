@@ -60,9 +60,5 @@ name = "compare"
 harness = false
 name = "spsc"
 
-[[bench]]
-harness = false
-name = "object_pool"
-
 [profile.release]
 debug = true
