@@ -11,7 +11,7 @@ fn main() {
 fn single_thread() {
     let consumer = PerfettoReporter::new("./single.log");
 
-    initialize(Config {}, consumer);
+    initialize(Config::default(), consumer);
 
     start();
 
@@ -41,7 +41,7 @@ fn single_thread() {
 fn multi_thread() {
     let consumer = PerfettoReporter::new("./single.log");
 
-    initialize(Config {}, consumer);
+    initialize(Config::default(), consumer);
 
     start();
 

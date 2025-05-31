@@ -3,7 +3,7 @@ use crate::{
 };
 use std::{cell::RefCell, rc::Rc};
 
-pub(crate) const DEFAULT_BATCH_SIZE: usize = 16384;
+pub(crate) const DEFAULT_BATCH_SIZE: usize = 4096;
 
 thread_local! {
     static SPAN_QUEUE: Rc<RefCell<SpanQueue>> = {

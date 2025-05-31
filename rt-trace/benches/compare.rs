@@ -31,7 +31,7 @@ fn init_rt_trace() {
         fn consume(&mut self, _spans: &[rt_trace::span::RawSpan]) {}
     }
 
-    initialize(Config {}, DummyReporter {});
+    initialize(Config::default(), DummyReporter {});
     start();
 }
 
@@ -39,22 +39,22 @@ fn fastrace_harness(n: usize) {
     use fastrace::prelude::*;
 
     let root = Span::root("parent", SpanContext::new(TraceId(12), SpanId::default()));
-    for _ in 0..(n / 10000) {
-        // We have to flush spans stored in SpanQueue for every 10240 iteration.
+    for _ in 0..(n / 1000) {
+        // We have to flush spans stored in SpanQueue for every 1000 iteration.
         let _g = root.set_local_parent();
-        for _ in 0..10000 {
+        for _ in 0..1000 {
             let _guard = LocalSpan::enter_with_local_parent("child");
         }
     }
 }
 
 fn rt_trace_harness(n: usize) {
-    fn dummy_fastrace(n: usize) {
+    fn dummy_rt_trace(n: usize) {
         for _ in 0..n {
             let _guard = span(span::Type::RuntimeStart(RuntimeStart {}));
         }
     }
-    dummy_fastrace(n);
+    dummy_rt_trace(n);
 }
 
 fn tracing_comparison(c: &mut Criterion) {
