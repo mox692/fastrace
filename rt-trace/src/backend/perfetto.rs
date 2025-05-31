@@ -288,10 +288,6 @@ impl SpanConsumer for PerfettoReporter {
                     let end_event = create_track_event(
                         None,
                         span.thread_id,
-                        Some(track_event::Type::SliceEnd),
-                        debug_annotations,
-                    );
-
                     packet.data = Some(Data::TrackEvent(end_event));
                     packet.trusted_pid = Some(pid);
                     packet.timestamp = Some(span.end.as_unix_nanos(&anchor));
