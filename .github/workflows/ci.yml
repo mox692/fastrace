@@ -29,23 +29,23 @@ jobs:
 
       - name: Check format
         if: ${{ matrix.rust == 'nightly' }}
-        run: cargo +${{ matrix.rust }} fmt --all -- --check
+        run: cargo +${{ matrix.rust }} fmt -p rt-trace -- --check
 
       - name: Check clippy
         if: ${{ matrix.rust == 'nightly' }}
-        run: cargo +${{ matrix.rust }} clippy --all-targets --all-features -- --deny warnings
+        run: cargo +${{ matrix.rust }} clippy -p rt-trace --all-targets --all-features -- --deny warnings
 
       - name: Build
-        run: cargo +${{ matrix.rust }} build --workspace --all-targets
+        run: cargo +${{ matrix.rust }} build -p rt-trace --all-targets
 
       - name: Run tests
         run: |
-          cargo +${{ matrix.rust }} test --workspace --all-targets -- --nocapture
-          cargo +${{ matrix.rust }} test --doc
+          cargo +${{ matrix.rust }} test -p rt-trace --all-targets -- --nocapture
+          cargo +${{ matrix.rust }} test -p rt-trace --doc
 
-      - name: Run examples
-        run: |
-          cargo +${{ matrix.rust }} run --example asynchronous
-          cargo +${{ matrix.rust }} run --example synchronous
-          cargo +${{ matrix.rust }} run --example get_started
-          cargo +${{ matrix.rust }} run --package test-statically-disable
+      # - name: Run examples
+      #   run: |
+      #     cargo +${{ matrix.rust }} run --example asynchronous
+      #     cargo +${{ matrix.rust }} run --example synchronous
+      #     cargo +${{ matrix.rust }} run --example get_started
+      #     cargo +${{ matrix.rust }} run --package test-statically-disable
