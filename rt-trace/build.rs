@@ -1,5 +1,6 @@
 #[cfg(not(windows))]
 fn main() -> std::io::Result<()> {
+    #[allow(unused_imports)]
     use std::path::Path;
 
     let protoc = prost_build::protoc_from_env();
