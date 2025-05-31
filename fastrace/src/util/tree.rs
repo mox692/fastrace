@@ -68,9 +68,8 @@ impl Tree {
     pub fn from_raw_spans(raw_spans: RawSpans) -> Vec<Tree> {
         let mut children: TreeChildren = HashMap::new();
 
-        let spans = raw_spans.into_inner();
         children.insert(SpanId::default(), ("".into(), vec![], vec![], vec![]));
-        for span in &spans {
+        for span in &raw_spans {
             children.insert(
                 span.id,
                 (
@@ -89,7 +88,7 @@ impl Tree {
                 ),
             );
         }
-        for span in &spans {
+        for span in &raw_spans {
             children
                 .get_mut(&span.parent_id)
                 .as_mut()
@@ -323,7 +322,7 @@ impl Tree {
 pub fn tree_str_from_raw_spans(raw_spans: RawSpans) -> String {
     Tree::from_raw_spans(raw_spans)
         .iter()
-        .map(|t| format!("\n{}", t))
+        .map(|t| format!("\n{t}"))
         .collect::<Vec<_>>()
         .join("")
 }
@@ -331,7 +330,7 @@ pub fn tree_str_from_raw_spans(raw_spans: RawSpans) -> String {
 pub fn tree_str_from_span_sets(span_sets: &[(SpanSet, CollectToken)]) -> String {
     Tree::from_span_sets(span_sets)
         .iter()
-        .map(|(id, t)| format!("\n#{}\n{}", id, t))
+        .map(|(id, t)| format!("\n#{id}\n{t}"))
         .collect::<Vec<_>>()
         .join("")
 }

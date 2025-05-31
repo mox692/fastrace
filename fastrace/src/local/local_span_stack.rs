@@ -10,8 +10,8 @@ use crate::local::local_span_line::SpanLine;
 use crate::util::CollectToken;
 use crate::util::RawSpans;
 
-const DEFAULT_SPAN_STACK_SIZE: usize = 4096;
-const DEFAULT_SPAN_QUEUE_SIZE: usize = 10240;
+const DEFAULT_SPAN_STACK_SIZE: usize = 1024;
+const DEFAULT_SPAN_QUEUE_SIZE: usize = 1024;
 
 thread_local! {
     pub static LOCAL_SPAN_STACK: Rc<RefCell<LocalSpanStack>> = Rc::new(RefCell::new(LocalSpanStack::with_capacity(DEFAULT_SPAN_STACK_SIZE)));
@@ -293,9 +293,10 @@ span1 []
             is_sampled: true,
         };
         let span_line1 = span_stack.register_span_line(Some(token1.into())).unwrap();
-        assert_eq!(span_stack.current_collect_token().unwrap().as_slice(), &[
-            token1
-        ]);
+        assert_eq!(
+            span_stack.current_collect_token().unwrap().as_slice(),
+            &[token1]
+        );
         {
             let span_line2 = span_stack.register_span_line(None).unwrap();
             assert!(span_stack.current_collect_token().is_none());
@@ -308,9 +309,10 @@ span1 []
                     is_sampled: true,
                 };
                 let span_line3 = span_stack.register_span_line(Some(token3.into())).unwrap();
-                assert_eq!(span_stack.current_collect_token().unwrap().as_slice(), &[
-                    token3
-                ]);
+                assert_eq!(
+                    span_stack.current_collect_token().unwrap().as_slice(),
+                    &[token3]
+                );
                 let _ = span_stack.unregister_and_collect(span_line3).unwrap();
             }
             assert!(span_stack.current_collect_token().is_none());
@@ -324,14 +326,16 @@ span1 []
                 is_sampled: true,
             };
             let span_line4 = span_stack.register_span_line(Some(token4.into())).unwrap();
-            assert_eq!(span_stack.current_collect_token().unwrap().as_slice(), &[
-                token4
-            ]);
+            assert_eq!(
+                span_stack.current_collect_token().unwrap().as_slice(),
+                &[token4]
+            );
             let _ = span_stack.unregister_and_collect(span_line4).unwrap();
         }
-        assert_eq!(span_stack.current_collect_token().unwrap().as_slice(), &[
-            token1
-        ]);
+        assert_eq!(
+            span_stack.current_collect_token().unwrap().as_slice(),
+            &[token1]
+        );
         let _ = span_stack.unregister_and_collect(span_line1).unwrap();
         assert!(span_stack.current_collect_token().is_none());
     }

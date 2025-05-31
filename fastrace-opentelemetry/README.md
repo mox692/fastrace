@@ -11,7 +11,7 @@
 ```toml
 [dependencies]
 fastrace = "0.7"
-fastrace-opentelemetry = "0.9"
+fastrace-opentelemetry = "0.10"
 ```
 
 ## Setup OpenTelemetry Collector
@@ -19,7 +19,7 @@ fastrace-opentelemetry = "0.9"
 Start OpenTelemetry Collector with Jaeger and Zipkin receivers:
 
 ```shell
-docker compose -f examples/docker-compose.yaml up
+docker compose -f dev/docker-compose.yaml up
 ```
 
 Then, run the synchronous example:
@@ -36,7 +36,6 @@ Zipkin UI is available on [http://127.0.0.1:9411/](http://127.0.0.1:9411/)
 
 ```rust, no_run
 use std::borrow::Cow;
-use std::time::Duration;
 use fastrace::collector::Config;
 use fastrace::prelude::*;
 use fastrace_opentelemetry::OpenTelemetryReporter;
@@ -56,9 +55,7 @@ let reporter = OpenTelemetryReporter::new(
         .with_tonic()
         .with_endpoint("http://127.0.0.1:4317".to_string())
         .with_protocol(opentelemetry_otlp::Protocol::Grpc)
-        .with_timeout(Duration::from_secs(
-            opentelemetry_otlp::OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT,
-        ))
+        .with_timeout(opentelemetry_otlp::OTEL_EXPORTER_OTLP_TIMEOUT_DEFAULT)
         .build()
         .expect("initialize oltp exporter"),
     SpanKind::Server,

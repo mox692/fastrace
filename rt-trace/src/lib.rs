@@ -2,7 +2,7 @@ use config::Config;
 use consumer::{GLOBAL_SPAN_CONSUMER, SpanConsumer};
 use span::{RawSpan, Span, Type};
 use span_queue::with_span_queue;
-use std::sync::atomic::AtomicBool;
+use std::{sync::atomic::AtomicBool, time::Duration};
 use utils::thread_id;
 pub mod backend;
 pub(crate) mod command;
@@ -68,7 +68,7 @@ pub fn start() {
 
 /// Initialize tracing.
 #[inline]
-pub fn initialize(_config: Config, consumer: impl SpanConsumer) {
+pub fn initialize(config: Config, consumer: impl SpanConsumer) {
     GLOBAL_SPAN_CONSUMER.lock().unwrap().consumer = Some(Box::new(consumer));
 
     // spawn consumer thread
@@ -78,7 +78,11 @@ pub fn initialize(_config: Config, consumer: impl SpanConsumer) {
             loop {
                 GLOBAL_SPAN_CONSUMER.lock().unwrap().handle_commands();
 
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                std::thread::sleep(
+                    config
+                        .consumer_thread_sleep_duration
+                        .unwrap_or(Duration::from_millis(10)),
+                );
             }
         })
         .unwrap();

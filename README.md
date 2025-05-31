@@ -2,18 +2,19 @@
 
 [![Crates.io](https://img.shields.io/crates/v/fastrace.svg?style=flat-square&logo=rust)](https://crates.io/crates/fastrace)
 [![Documentation](https://img.shields.io/docsrs/fastrace?style=flat-square&logo=rust)](https://docs.rs/fastrace/)
-[![MSRV 1.75.0](https://img.shields.io/badge/MSRV-1.75.0-green?style=flat-square&logo=rust)](https://www.whatrustisit.com)
+[![MSRV 1.80.0](https://img.shields.io/badge/MSRV-1.80.0-green?style=flat-square&logo=rust)](https://www.whatrustisit.com)
 [![CI Status](https://img.shields.io/github/actions/workflow/status/fast/fastrace/ci.yml?style=flat-square&logo=github)](https://github.com/fast/fastrace/actions)
 [![License](https://img.shields.io/crates/l/fastrace?style=flat-square)](https://github.com/fast/fastrace/blob/main/LICENSE)
+[![libs.tech recommends](https://libs.tech/project/829370199/badge.svg)](https://libs.tech/project/829370199/fastrace)
 
 fastrace is a tracing library [10~100x faster](#benchmarks) than others:
 
-![benchmark](etc/img/head-benchmark.svg)
+![benchmark](https://raw.githubusercontent.com/fast/fastrace/refs/heads/main/etc/img/head-benchmark.svg)
 
 Features:
 
 - [Extremely fast](#benchmarks)
-- [Rich features for logging](fastrace/examples/logging.rs)
+- [Rich features for logging](https://github.com/fast/fastrace/blob/main/examples/logging.rs)
 - Compatible with [Jaeger], [Datadog], and [OpenTelemetry]
 
 ## Resources
@@ -21,6 +22,7 @@ Features:
 - [Docs]
 - [Examples]
 - [FAQ](#faq)
+- [Migrating from tracing](#migrating-from-tokio-tracing)
 
 ## Getting Started
 
@@ -93,7 +95,7 @@ fn main() {
 
 **By different architectures:**
 
-![Benchmark result by architecture](etc/img/benchmark-arch.svg)
+![Benchmark result by architecture](https://raw.githubusercontent.com/fast/fastrace/refs/heads/main/etc/img/benchmark-arch.svg)
 
 |                     | x86-64 (Intel Broadwell) | x86-64 (Intel Skylake) | x86-64 (AMD Zen) | ARM (AWS Graviton2) |
 |---------------------|--------------------------|------------------------|------------------|---------------------|
@@ -103,7 +105,7 @@ fn main() {
 
 **By creating different number of spans:**
 
-![Benchmark result by number of spans](etc/img/benchmark-spans.svg)
+![Benchmark result by number of spans](https://raw.githubusercontent.com/fast/fastrace/refs/heads/main/etc/img/benchmark-spans.svg)
 
 |                     | 1 span     | 10 spans   | 100 spans   | 1000 spans  |
 |---------------------|------------|------------|-------------|-------------|
@@ -111,11 +113,30 @@ fn main() {
 | rustracing          | 13x slower | 26x slower | 45x slower  | 55x slower  |
 | fastrace (baseline) | 1x (0.4us) | 1x (0.8us) | 1x (3.4us)  | 1x (27.8us) |
 
-Detailed results are available in [etc/benchmark-result](etc/benchmark-result).
+Detailed results are available in [etc/benchmark-result](https://github.com/fast/fastrace/tree/main/etc/benchmark-result).
 
-## Supported Rust Versions (MSRV 1.75.0)
+## Supported Rust Versions (MSRV 1.80.0)
 
-Fastrace is built against the latest stable release. The minimum supported version is 1.75.0. The current Fastrace version is not guaranteed to build on Rust versions earlier than the minimum supported version.
+Fastrace is built against the latest stable release. The minimum supported version is 1.80.0. The current Fastrace version is not guaranteed to build on Rust versions earlier than the minimum supported version.
+
+## Reporters
+
+Fastrace supports multiple out-of-box reporters to export spans:
+
+- [`fastrace-jaeger`](https://crates.io/crates/fastrace-jaeger): Export spans to [Jaeger](https://www.jaegertracing.io/)
+- [`fastrace-datadog`](https://crates.io/crates/fastrace-datadog): Export spans to [Datadog](https://www.datadoghq.com/)
+- [`fastrace-opentelemetry`](https://crates.io/crates/fastrace-opentelemetry): Export spans to [OpenTelemetry](https://opentelemetry.io/)
+
+## Integrations
+
+Fastrace provides integrations with popular libraries to automatically handle context propagation:
+
+- [fastrace-futures](https://crates.io/crates/fastrace-futures): Trace Stream from [`futures`](https://crates.io/crates/futures)
+- [fastrace-axum](https://crates.io/crates/fastrace-axum): Trace [`axum`](https://crates.io/crates/axum) HTTP services
+- [fastrace-poem](https://crates.io/crates/fastrace-poem): Trace [`poem`](https://crates.io/crates/poem) HTTP services
+- [fastrace-reqwest](https://crates.io/crates/fastrace-reqwest): Trace [`reqwest`](https://crates.io/crates/reqwest) HTTP requests
+- [fastrace-tonic](https://crates.io/crates/fastrace-tonic): Trace [`tonic`](https://crates.io/crates/tonic) client and server requests
+- [fastrace-tracing](https://crates.io/crates/fastrace-tracing): Compatibility layer for [`tracing`](https://crates.io/crates/tracing)
 
 ## Projects using fastrace
 
@@ -159,20 +180,21 @@ The concept of 'level' may not be an optimal feature for tracing systems. While 
 
 In this context, fastrace offers a more efficient solution by filtering out entire traces that are not of interest through its unique [tail-sampling](https://opentelemetry.io/blog/2022/tail-sampling/) design. Therefore, the concept of 'level', borrowed directly from logging systems, may not be suitable for fastrace.
 
-### Will fastrace support OpenTelemetry feature 'X'?
+## Migrating from tokio-tracing
 
-fastrace is focused on high performance tracing only. You can open an issue for the missing tracing features you want to have.
+If you're using the [tokio-tracing](https://github.com/tokio-rs/tracing) ecosystem and want to switch to fastrace for better performance, you can use [fastrace-tracing](https://github.com/fast/fastrace-tracing) to make the transition easier.
 
-Note that we always prioritize performance over features, so that not all tracing feature requests may be accepted.
+The `fastrace-tracing` crate provides a compatibility layer that lets you capture spans from libraries instrumented with `tokio-tracing` in two lines of code:
 
-### What's the status of this library?
+```rust
+let subscriber = tracing_subscriber::Registry::default().with(fastrace_tracing::FastraceCompatLayer::new());
+tracing::subscriber::set_global_default(subscriber).unwrap();
+```
 
-**API Unstable**: The API is not stabilized yet, may be changed in the future.
-
-**Code base Tested**: fastrace has been tested with high coverage. However, applications utilizing fastrace have not been widely deployed, so that fastrace is currently **NOT** regarded as battle-tested.
+For more details, refer to the [fastrace-tracing documentation](https://docs.rs/fastrace-tracing).
 
 [Docs]: https://docs.rs/fastrace/
-[Examples]: fastrace/examples
+[Examples]: https://github.com/fast/fastrace/tree/main/examples
 [OpenTelemetry]: https://opentelemetry.io/
 [Jaeger]: https://crates.io/crates/fastrace-jaeger
 [Datadog]: https://crates.io/crates/fastrace-datadog
