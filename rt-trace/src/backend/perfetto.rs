@@ -275,7 +275,6 @@ impl SpanConsumer for PerfettoReporter {
                         }
                         _ => unreachable!(),
                     }
-                    // packet.data = Some(Data::TrackEvent(start_event));
                     packet.timestamp = Some(span.start.as_unix_nanos(&anchor));
                     packet.optional_trusted_packet_sequence_id =
                         Some(OptionalTrustedPacketSequenceId::TrustedPacketSequenceId(42));
@@ -286,9 +285,13 @@ impl SpanConsumer for PerfettoReporter {
                     let packet = unsafe { packets.get_unchecked_mut(num_packets) };
                     let debug_annotations = create_debug_annotations();
                     let end_event = create_track_event(
-                        None,
+                        Some(span.typ.type_name_string()),
                         span.thread_id,
-                    packet.data = Some(Data::TrackEvent(end_event));
+                        Some(track_event::Type::SliceEnd),
+                        debug_annotations,
+                    );
+                    (&mut packet.data).replace(Data::TrackEvent(end_event));
+
                     packet.trusted_pid = Some(pid);
                     packet.timestamp = Some(span.end.as_unix_nanos(&anchor));
                     packet.optional_trusted_packet_sequence_id =
