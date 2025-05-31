@@ -29,6 +29,8 @@ libc = "0.2.147"
 windows-sys = { version = "0.59", features = ["Win32_System_Threading"] }
 
 [dev-dependencies]
+fastrace = { path = "../fastrace" }
+criterion = "0.6"
 
 [build-dependencies]
 # we need to fix the version to match our msrv
@@ -37,3 +39,10 @@ prost-build = "=0.13.2"
 # protobuf compilation issue
 [target.'cfg(not(target_os = "windows"))'.build-dependencies]
 protobuf-src = "2.1"
+
+[[bench]]
+harness = false
+name = "compare"
+
+[profile.release]
+debug = true
