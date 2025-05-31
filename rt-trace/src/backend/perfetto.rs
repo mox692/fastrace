@@ -28,27 +28,42 @@ use perfetto_protos::{
 use prost::Message;
 use std::{fs::File, io::Write, path::Path};
 
-fn init() -> Vec<TracePacket> {
+fn trace_packet_init() -> Vec<TracePacket> {
     vec![TracePacket::default(); DEFAULT_BATCH_SIZE * 2]
 }
 
-fn clear(_vec: &mut Vec<TracePacket>) {
+fn clear<T>(_vec: &mut T) {
     // do nothing
 }
 
-static TRACE_PACKETS_POOL: Lazy<Pool<Vec<TracePacket>>> = Lazy::new(|| Pool::new(init, clear));
+static TRACE_PACKETS_POOL: Lazy<Pool<Vec<TracePacket>>> =
+    Lazy::new(|| Pool::new(trace_packet_init, clear::<Vec<TracePacket>>));
+static DEBUG_ANNOTATION_POOL: Lazy<Pool<Vec<DebugAnnotation>>> =
+    Lazy::new(|| Pool::new(Vec::new, clear::<Vec<DebugAnnotation>>));
 
 thread_local! {
     static TRACE_PACKETS_PULLER: RefCell<Puller<'static, Vec<TracePacket>>> = RefCell::new(TRACE_PACKETS_POOL.puller(2));
+    static DEBUG_ANNOTATION_PULLER: RefCell<Puller<'static, Vec<DebugAnnotation>>> = RefCell::new(DEBUG_ANNOTATION_POOL.puller(2));
 }
 
 struct TracePackets(pub(crate) Reusable<'static, Vec<TracePacket>>);
+struct DebugAnnotations(pub(crate) Reusable<'static, Vec<DebugAnnotation>>);
 
 impl Default for TracePackets {
     fn default() -> Self {
         TRACE_PACKETS_PULLER
             .try_with(|puller| TracePackets(puller.borrow_mut().pull()))
-            .unwrap_or_else(|_| TracePackets(Reusable::new(&*TRACE_PACKETS_POOL, init())))
+            .unwrap_or_else(|_| {
+                TracePackets(Reusable::new(&*TRACE_PACKETS_POOL, trace_packet_init()))
+            })
+    }
+}
+
+impl Default for DebugAnnotations {
+    fn default() -> Self {
+        DEBUG_ANNOTATION_PULLER
+            .try_with(|puller| DebugAnnotations(puller.borrow_mut().pull()))
+            .unwrap_or_else(|_| DebugAnnotations(Reusable::new(&*&DEBUG_ANNOTATION_POOL, vec![])))
     }
 }
 
@@ -235,14 +250,32 @@ impl SpanConsumer for PerfettoReporter {
                 }
                 Type::RunTask(_) => {
                     // Start event packet
-                    let debug_annotations = create_debug_annotations();
-                    let start_event = create_track_event(
-                        Some(span.typ.type_name_string()),
-                        span.thread_id,
-                        Some(track_event::Type::SliceBegin),
-                        debug_annotations,
-                    );
-                    packet.data = Some(Data::TrackEvent(start_event));
+                    // let debug_annotations = create_debug_annotations();
+                    // let start_event = create_track_event(
+                    //     Some(span.typ.type_name_string()),
+                    //     span.thread_id,
+                    //     Some(track_event::Type::SliceBegin),
+                    //     debug_annotations,
+                    // );
+                    // proposed change
+                    match &mut packet.data {
+                        Some(Data::TrackEvent(trackevent)) => {
+                            let debug_annotations = &mut trackevent.debug_annotations;
+                            // TODO: update debug_annotations data
+                        }
+                        Some(Data::TrackDescriptor(_)) | None => {
+                            let debug_annotations = create_debug_annotations();
+                            let start_event = create_track_event(
+                                Some(span.typ.type_name_string()),
+                                span.thread_id,
+                                Some(track_event::Type::SliceBegin),
+                                debug_annotations,
+                            );
+                            (&mut packet.data).replace(Data::TrackEvent(start_event));
+                        }
+                        _ => unreachable!(),
+                    }
+                    // packet.data = Some(Data::TrackEvent(start_event));
                     packet.timestamp = Some(span.start.as_unix_nanos(&anchor));
                     packet.optional_trusted_packet_sequence_id =
                         Some(OptionalTrustedPacketSequenceId::TrustedPacketSequenceId(42));
