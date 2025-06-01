@@ -524,22 +524,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fastrace-perfetto"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "fastant",
- "fastrace",
- "once_cell",
- "prost",
- "prost-build",
- "prost-derive",
- "protobuf-src",
- "rtrb",
- "thread-id",
-]
-
-[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2278,16 +2262,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.101",
-]
-
-[[package]]
-name = "thread-id"
-version = "4.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cfe8f25bbdd100db7e1d34acf7fd2dc59c4bf8f7483f505eaa7d4f12f76cc0ea"
-dependencies = [
- "libc",
- "winapi",
 ]
 
 [[package]]

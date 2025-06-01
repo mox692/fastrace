@@ -6,7 +6,6 @@ members = [
   "fastrace-datadog",
   "fastrace-opentelemetry",
   "fastrace-futures",
-  "fastrace-perfetto",
   "rt-trace"
 ]
 resolver = "2"
@@ -26,7 +25,6 @@ fastrace-macro = { version = "0.7.9", path = "fastrace-macro" }
 fastrace-datadog = { path = "fastrace-datadog" }
 fastrace-futures = { path = "fastrace-futures" }
 fastrace-jaeger = { path = "fastrace-jaeger" }
-fastrace-perfetto = { path = "fastrace-perfetto" }
 fastrace-opentelemetry = { path = "fastrace-opentelemetry" }
 
 # crates.io dependencies
