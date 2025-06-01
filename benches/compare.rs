@@ -63,7 +63,7 @@ fn tracing_comparison(c: &mut Criterion) {
 
     let mut bgroup = c.benchmark_group("compare");
 
-    for n in &[100] {
+    for n in &[100, 1000, 10000] {
         bgroup.bench_function(format!("fastrace/{n}"), |b| b.iter(|| fastrace_harness(*n)));
         bgroup.bench_function(format!("rt_trace/{n}"), |b| b.iter(|| rt_trace_harness(*n)));
     }
