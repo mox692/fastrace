@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "benches",
   "fastrace",
   "fastrace-macro",
   "fastrace-jaeger",
