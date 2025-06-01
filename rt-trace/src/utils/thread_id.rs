@@ -5,26 +5,6 @@
 // your option. A copy of both licenses has been included in the root of the
 // repository.
 
-//! Thread-ID: get a unique ID for the current thread.
-//!
-//! For diagnostics and debugging it can often be useful to get an ID that is
-//! different for every thread. This crate provides that functionality.
-//!
-//! # Example
-//!
-//! ```
-//! use std::thread;
-//! use thread_id;
-//!
-//! let handle = thread::spawn(move || {
-//!     println!("spawned thread has id {}", thread_id::get());
-//! });
-//!
-//! println!("main thread has id {}", thread_id::get());
-//!
-//! handle.join().unwrap();
-//! ```
-
 #![warn(missing_docs)]
 
 #[cfg(unix)]

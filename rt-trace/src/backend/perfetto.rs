@@ -302,7 +302,7 @@ impl SpanConsumer for PerfettoReporter {
                 Type::RuntimeStart(_) => {
                     unimplemented!()
                 }
-                Type::RuntimeTarminate(_) => {
+                Type::RuntimeTerminate(_) => {
                     unimplemented!()
                 }
             };
@@ -323,7 +323,7 @@ pub(crate) fn thread_descriptor() -> RawSpan {
                 .map(|str| str.into())
                 .unwrap_or(format!("{thread_id}")),
         }),
-        thread_id: crate::utils::thread_id::get() as u64,
+        thread_id,
         start: Instant::ZERO,
         end: Instant::ZERO,
     }

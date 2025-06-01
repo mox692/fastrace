@@ -2,7 +2,7 @@ use crate::{enabled, span_queue::SpanQueue};
 use fastant::Instant;
 use std::{cell::RefCell, rc::Rc, str::FromStr};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct RunTask {
     pub id: Option<u64>,
     // TODO: define more efficient string type.
@@ -14,15 +14,15 @@ pub struct RunTask {
     pub backtrace: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RuntimeStart {}
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RuntimeTerminate {}
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ThreadDiscriptor {
     pub(crate) thread_name: String,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ProcessDiscriptor {}
 
 impl Type {
@@ -32,7 +32,7 @@ impl Type {
         match self {
             &Type::RunTask(_) => "run_task",
             &Type::RuntimeStart(_) => "runtime_start",
-            &Type::RuntimeTarminate(_) => "runtime_terminate",
+            &Type::RuntimeTerminate(_) => "runtime_terminate",
             &Type::ThreadDiscriptor(_) => "thread_discriptor",
             &Type::ProcessDiscriptor(_) => "process_discriptor",
         }
@@ -47,17 +47,17 @@ impl Type {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     RunTask(RunTask),
     RuntimeStart(RuntimeStart),
-    RuntimeTarminate(RuntimeTerminate),
+    RuntimeTerminate(RuntimeTerminate),
     // perfetto specific
     ThreadDiscriptor(ThreadDiscriptor),
     ProcessDiscriptor(ProcessDiscriptor),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RawSpan {
     pub(crate) typ: Type,
     pub(crate) thread_id: u64,

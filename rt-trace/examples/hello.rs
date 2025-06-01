@@ -45,7 +45,7 @@ fn multi_thread() {
 
     start();
 
-    let num_threads = 5;
+    let num_threads = 10;
     let mut handles = vec![];
     for _ in 0..num_threads {
         let handle = std::thread::spawn(move || {
