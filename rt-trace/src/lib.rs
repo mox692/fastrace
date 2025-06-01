@@ -75,13 +75,13 @@ pub fn initialize(config: Config, consumer: impl SpanConsumer) {
         .name("global-span-consumer".to_string())
         .spawn(move || {
             loop {
-                GLOBAL_SPAN_CONSUMER.lock().unwrap().handle_commands();
-
                 std::thread::sleep(
                     config
                         .consumer_thread_sleep_duration
                         .unwrap_or(Duration::from_millis(10)),
                 );
+
+                GLOBAL_SPAN_CONSUMER.lock().unwrap().handle_commands();
             }
         })
         .unwrap();
