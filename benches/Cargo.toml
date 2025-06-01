@@ -11,10 +11,16 @@ license = "MIT"
 
 [dev-dependencies]
 criterion = "0.5.1"
+iai-callgrind = "0.14.1"
 fastrace = { path = "../fastrace" }
 rt-trace = { path = "../rt-trace" }
 
 [[bench]]
 name = "compare"
 path = "compare.rs"
+harness = false
+
+[[bench]]
+name = "compare_inst"
+path = "compare_inst.rs"
 harness = false
