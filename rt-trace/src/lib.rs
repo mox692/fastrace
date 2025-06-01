@@ -8,7 +8,6 @@ pub mod backend;
 pub(crate) mod command;
 pub mod config;
 pub mod consumer;
-pub(crate) mod macros;
 pub mod span;
 pub(crate) mod span_queue;
 mod utils;
