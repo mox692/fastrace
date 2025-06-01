@@ -13,6 +13,9 @@ pub(crate) mod span_queue;
 mod utils;
 use fastant::Instant;
 
+#[cfg(test)]
+mod tests;
+
 /// Whether tracing is enabled or not.
 static ENABLED: AtomicBool = AtomicBool::new(false);
 
@@ -67,7 +70,7 @@ pub fn start() {
 
 /// Initialize tracing.
 #[inline]
-pub fn initialize(config: Config, consumer: impl SpanConsumer) {
+pub fn initialize(config: Config, consumer: impl SpanConsumer + 'static) {
     GLOBAL_SPAN_CONSUMER.lock().unwrap().consumer = Some(Box::new(consumer));
 
     // spawn consumer thread
