@@ -187,10 +187,10 @@ impl LocalSpan {
     ) -> Self {
         let span_handle = {
             let mut stack = stack.borrow_mut();
-            stack.enter_span(name)
+            stack.enter_span(name).expect("span exhausted")
         };
 
-        let inner = span_handle.map(|span_handle| LocalSpanInner { stack, span_handle });
+        let inner = Some(LocalSpanInner { stack, span_handle });
 
         Self { inner }
     }

@@ -20,12 +20,9 @@ fn fastrace_harness(n: usize) {
     use fastrace::prelude::*;
 
     let root = Span::root("parent", SpanContext::new(TraceId(12), SpanId::default()));
-    for _ in 0..(n / 1000) {
-        // We have to flush spans stored in SpanQueue for every 1000 iteration.
-        let _g = root.set_local_parent();
-        for _ in 0..1000 {
-            let _guard = LocalSpan::enter_with_local_parent("child");
-        }
+    let _g = root.set_local_parent();
+    for _ in 0..n {
+        let _guard = LocalSpan::enter_with_local_parent("child");
     }
 }
 
