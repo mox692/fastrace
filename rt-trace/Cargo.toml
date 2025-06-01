@@ -40,9 +40,5 @@ prost-build = "=0.13.2"
 [target.'cfg(not(target_os = "windows"))'.build-dependencies]
 protobuf-src = "2.1"
 
-[[bench]]
-harness = false
-name = "compare"
-
 [profile.release]
 debug = true
