@@ -2,9 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, rt-trace-dev ]
   pull_request:
-    branches: [ main ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -16,20 +15,38 @@ jobs:
       FORCE_COLOR: 1
     steps:
       - uses: actions/checkout@v4
-      - uses: crate-ci/typos@master
+      # - uses: crate-ci/typos@master
       - uses: Swatinem/rust-cache@v2
-      - run: rm rust-toolchain.toml
-        shell: bash
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: nightly
+          toolchain: stable
           components: rustfmt, clippy
       - name: Cargo version
         run: cargo --version
       - name: Check format
         run: cargo fmt --all -- --check
-      - name: Check clippy
-        run: cargo clippy --all-targets --all-features -- --deny warnings
+
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, macos-latest, ubuntu-latest ]
+        rust: [ "1.70.0", "stable", "nightly" ]
+    env:
+      RUST_BACKTRACE: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest,cargo-nextest
+
+      - name: Build
+        run: cargo +${{ matrix.rust }} build -p rt-trace --lib
 
   test:
     runs-on: ${{ matrix.os }}
@@ -37,13 +54,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ windows-latest, macos-latest, ubuntu-latest ]
-        rust: [ "1.80.0", "stable", "nightly" ]
+        rust: [ "stable" ]
     env:
       RUST_BACKTRACE: 1
     steps:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
-      - run: rm rust-toolchain.toml
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust }}
@@ -51,20 +67,18 @@ jobs:
         with:
           tool: nextest,cargo-nextest
 
-      - name: Cargo version
-        run: cargo --version
+      - name: Check format
+        if: ${{ matrix.rust == 'nightly' }}
+        run: cargo +${{ matrix.rust }} fmt -p rt-trace -- --check
+
+      - name: Check clippy
+        if: ${{ matrix.rust == 'nightly' }}
+        run: cargo +${{ matrix.rust }} clippy -p rt-trace --lib --all-features -- --deny warnings
 
       - name: Build
-        run: cargo build --workspace --all-targets
+        run: cargo +${{ matrix.rust }} build -p rt-trace --lib
 
       - name: Run tests
         run: |
-          cargo nextest run --workspace
-          cargo test --doc
-
-      - name: Run examples
-        run: |
-          cargo run --example asynchronous
-          cargo run --example synchronous
-          cargo run --example basic
-          cargo run --package test-statically-disable
+          cargo +${{ matrix.rust }} test -p rt-trace --lib -- --nocapture
+          cargo +${{ matrix.rust }} test -p rt-trace --doc

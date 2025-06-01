@@ -14,6 +14,7 @@ repository.workspace = true
 rust-version.workspace = true
 
 [features]
+default = ["enable"]
 enable = []
 
 [dependencies]
@@ -31,6 +32,7 @@ crossbeam = "0.8"
 divan = "0.1"
 fastrace = { path = ".", features = ["enable"] }
 fastrace-opentelemetry = { workspace = true }
+rt-trace = { path = "../rt-trace" }
 flume = "0.11"
 futures-timer = "3"
 insta = "1.43.1"
@@ -52,16 +54,7 @@ name = "trace"
 
 [[bench]]
 harness = false
-name = "compare"
-
-[[bench]]
-harness = false
 name = "spsc"
 
-[[bench]]
-harness = false
-name = "id"
-
-[[bench]]
-harness = false
-name = "vec"
+[profile.release]
+debug = true
