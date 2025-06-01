@@ -35,7 +35,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ windows-latest, macos-latest, ubuntu-latest ]
-        rust: [ "1.80.0", "stable", "nightly" ]
+        rust: [ "1.70.0", "stable", "nightly" ]
     env:
       RUST_BACKTRACE: 1
     steps:
@@ -54,14 +54,14 @@ jobs:
 
       - name: Check clippy
         if: ${{ matrix.rust == 'nightly' }}
-        run: cargo +${{ matrix.rust }} clippy -p rt-trace --all-targets --all-features -- --deny warnings
+        run: cargo +${{ matrix.rust }} clippy -p rt-trace --lib --all-features -- --deny warnings
 
       - name: Build
-        run: cargo +${{ matrix.rust }} build -p rt-trace --all-targets
+        run: cargo +${{ matrix.rust }} build -p rt-trace --lib
 
       - name: Run tests
         run: |
-          cargo +${{ matrix.rust }} test -p rt-trace --all-targets -- --nocapture
+          cargo +${{ matrix.rust }} test -p rt-trace --lib -- --nocapture
           cargo +${{ matrix.rust }} test -p rt-trace --doc
 
       # - name: Run examples

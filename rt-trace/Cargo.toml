@@ -14,8 +14,8 @@ rust-version.workspace = true
 
 [dependencies]
 fastant = "0.1"
-prost = "0.13.5"
-prost-derive = "0.13.5"
+prost = "=0.13.2"
+prost-derive = "=0.13.2"
 bytes = "1.10"
 rtrb = "0.3"
 
@@ -30,7 +30,7 @@ windows-sys = { version = "0.59", features = ["Win32_System_Threading"] }
 
 [dev-dependencies]
 fastrace = { path = "../fastrace" }
-criterion = "0.6"
+criterion = "0.5"
 
 [build-dependencies]
 # we need to fix the version to match our msrv
