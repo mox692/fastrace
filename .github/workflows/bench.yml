@@ -31,7 +31,7 @@ jobs:
           name: Rust Benchmark
           tool: 'cargo'
           output-file-path: output.txt
-          auto-push: false
+          auto-push: true 
           comment-always: true
           gh-pages-branch: gh-pages
           alert-threshold: '200%'
