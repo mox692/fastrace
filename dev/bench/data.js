@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749045893881,
+  "lastUpdate": 1749045973763,
   "repoUrl": "https://github.com/mox692/fastrace",
   "entries": {
     "Rust Benchmark": [
@@ -483,6 +483,62 @@ window.BENCHMARK_DATA = {
             "name": "compare/rt_trace/1000",
             "value": 35423,
             "range": "± 61",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "mox692",
+            "username": "mox692"
+          },
+          "committer": {
+            "name": "mox692",
+            "username": "mox692"
+          },
+          "id": "0d097aae8f93a58e7ed22de5d8d3a765531b7d90",
+          "message": "Perfetto support  opt ptr write",
+          "timestamp": "2025-06-04T13:58:07Z",
+          "url": "https://github.com/mox692/fastrace/pull/3/commits/0d097aae8f93a58e7ed22de5d8d3a765531b7d90"
+        },
+        "date": 1749045973196,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "compare/fastrace/10",
+            "value": 89,
+            "range": "± 15",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/10",
+            "value": 351,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/100",
+            "value": 90,
+            "range": "± 8",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/100",
+            "value": 3518,
+            "range": "± 52",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/1000",
+            "value": 27789,
+            "range": "± 952",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/1000",
+            "value": 35373,
+            "range": "± 45",
             "unit": "ns/iter"
           }
         ]
