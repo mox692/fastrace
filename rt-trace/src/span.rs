@@ -66,6 +66,7 @@ pub struct RawSpan {
 }
 
 /// A span that. This should be dropped in the same therad.
+#[derive(Debug)]
 pub struct Span {
     pub(crate) inner: Option<RawSpan>,
     pub(crate) span_queue_handle: Rc<RefCell<SpanQueue>>,

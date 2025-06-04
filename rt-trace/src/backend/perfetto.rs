@@ -180,11 +180,6 @@ impl Trace {
     }
 
     #[inline]
-    fn insert(&mut self, index: usize, packet: TracePacket) {
-        self.inner.0.insert(index, packet);
-    }
-
-    #[inline]
     fn write(&mut self, output: &mut File, num_packets: usize) {
         // The next pooled object will be temporarily assigned to `self.inner` to avoid borrowing issues.
         let next = TracePackets::default();
