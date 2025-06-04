@@ -28,7 +28,7 @@ use perfetto_protos::{
 use prost::Message;
 use std::{fs::File, io::Write, path::Path};
 
-fn trace_packet_init() -> Vec<TracePacket> {
+fn init() -> Vec<TracePacket> {
     vec![TracePacket::default(); DEFAULT_BATCH_SIZE * 2]
 }
 
@@ -37,7 +37,7 @@ fn clear<T>(_vec: &mut T) {
 }
 
 static TRACE_PACKETS_POOL: Lazy<Pool<Vec<TracePacket>>> =
-    Lazy::new(|| Pool::new(trace_packet_init, clear::<Vec<TracePacket>>));
+    Lazy::new(|| Pool::new(init, clear::<Vec<TracePacket>>));
 static DEBUG_ANNOTATION_POOL: Lazy<Pool<Vec<DebugAnnotation>>> =
     Lazy::new(|| Pool::new(Vec::new, clear::<Vec<DebugAnnotation>>));
 
@@ -53,9 +53,7 @@ impl Default for TracePackets {
     fn default() -> Self {
         TRACE_PACKETS_PULLER
             .try_with(|puller| TracePackets(puller.borrow_mut().pull()))
-            .unwrap_or_else(|_| {
-                TracePackets(Reusable::new(&*TRACE_PACKETS_POOL, trace_packet_init()))
-            })
+            .unwrap_or_else(|_| TracePackets(Reusable::new(&*TRACE_PACKETS_POOL, init())))
     }
 }
 
