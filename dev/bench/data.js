@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749045411668,
+  "lastUpdate": 1749045893881,
   "repoUrl": "https://github.com/mox692/fastrace",
   "entries": {
     "Rust Benchmark": [
@@ -423,6 +423,66 @@ window.BENCHMARK_DATA = {
             "name": "compare/rt_trace/1000",
             "value": 34475,
             "range": "± 85",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "moymoymox@gmail.com",
+            "name": "Motoyuki Kimura",
+            "username": "mox692"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "cb69ecc471dc7cf66ee0fd090366588777de0fd2",
+          "message": "Add CI bench (#6)",
+          "timestamp": "2025-06-04T22:58:04+09:00",
+          "tree_id": "b1ce8f6230ae494d8df9d57ad65046825f51179e",
+          "url": "https://github.com/mox692/fastrace/commit/cb69ecc471dc7cf66ee0fd090366588777de0fd2"
+        },
+        "date": 1749045893065,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "compare/fastrace/10",
+            "value": 90,
+            "range": "± 12",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/10",
+            "value": 353,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/100",
+            "value": 91,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/100",
+            "value": 3530,
+            "range": "± 30",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/1000",
+            "value": 28274,
+            "range": "± 573",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/1000",
+            "value": 35423,
+            "range": "± 61",
             "unit": "ns/iter"
           }
         ]
