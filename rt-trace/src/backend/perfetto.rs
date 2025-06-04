@@ -2,10 +2,9 @@
 // * https://perfetto.dev/docs/reference/synthetic-track-event
 
 use super::perfetto_protos;
-use super::perfetto_protos::DebugAnnotation;
 use super::perfetto_protos::debug_annotation;
 use super::perfetto_protos::debug_annotation::Value;
-use crate::Type;
+use super::perfetto_protos::DebugAnnotation;
 use crate::consumer::SpanConsumer;
 use crate::span::ProcessDiscriptor;
 use crate::span::RawSpan;
@@ -14,16 +13,17 @@ use crate::span_queue::DEFAULT_BATCH_SIZE;
 use crate::utils::object_pool::Pool;
 use crate::utils::object_pool::Puller;
 use crate::utils::object_pool::Reusable;
+use crate::Type;
 use bytes::BytesMut;
 use core::cell::RefCell;
 use fastant::Anchor;
 use fastant::Instant;
 use once_cell::sync::Lazy;
 use perfetto_protos::{
-    ProcessDescriptor, ThreadDescriptor, TracePacket, TrackDescriptor, TrackEvent,
     trace_packet::{Data, OptionalTrustedPacketSequenceId, OptionalTrustedUid},
     track_descriptor::StaticOrDynamicName,
     track_event::{self, NameField},
+    ProcessDescriptor, ThreadDescriptor, TracePacket, TrackDescriptor, TrackEvent,
 };
 use prost::Message;
 use std::{fs::File, io::Write, path::Path};

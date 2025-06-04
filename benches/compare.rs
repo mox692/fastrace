@@ -1,8 +1,8 @@
 use std::sync::OnceLock;
 
-use criterion::Criterion;
 use criterion::criterion_group;
 use criterion::criterion_main;
+use criterion::Criterion;
 use fastrace::collector::Reporter;
 use fastrace::prelude::SpanRecord;
 use rt_trace::config::Config;
