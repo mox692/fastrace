@@ -48,13 +48,13 @@ tracing = "0.1"
 tracing-opentelemetry = { version = "0.30.0" }
 tracing-subscriber = { version = "0.3.19" }
 
-[[bench]]
-harness = false
-name = "trace"
+# [[bench]]
+# harness = false
+# name = "trace"
 
-[[bench]]
-harness = false
-name = "spsc"
+# [[bench]]
+# harness = false
+# name = "spsc"
 
-[profile.release]
-debug = true
+# [profile.release]
+# debug = true
