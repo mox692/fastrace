@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749050594772,
+  "lastUpdate": 1749051701849,
   "repoUrl": "https://github.com/mox692/fastrace",
   "entries": {
     "Rust Benchmark": [
@@ -651,6 +651,62 @@ window.BENCHMARK_DATA = {
             "name": "compare/rt_trace/1000",
             "value": 34729,
             "range": "± 50",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "mox692",
+            "username": "mox692"
+          },
+          "committer": {
+            "name": "mox692",
+            "username": "mox692"
+          },
+          "id": "2b26e7ac1f3e6176357bfd454a67ca3da010cef4",
+          "message": "Tiny update",
+          "timestamp": "2025-06-04T13:58:07Z",
+          "url": "https://github.com/mox692/fastrace/pull/7/commits/2b26e7ac1f3e6176357bfd454a67ca3da010cef4"
+        },
+        "date": 1749051701344,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "compare/fastrace/10",
+            "value": 91,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/10",
+            "value": 344,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/100",
+            "value": 91,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/100",
+            "value": 3451,
+            "range": "± 53",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/1000",
+            "value": 28457,
+            "range": "± 358",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/1000",
+            "value": 34749,
+            "range": "± 66",
             "unit": "ns/iter"
           }
         ]
