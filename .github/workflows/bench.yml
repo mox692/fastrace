@@ -38,7 +38,3 @@ jobs:
           comment-on-alert: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: true
-
-      - name: Push benchmark result
-        if: github.event_name != 'pull_request'
-        run: git push 'https://mox692:${{ secrets.GITHUB_TOKEN }}@github.com/mox692/fastrace.git' gh-pages:gh-pages
