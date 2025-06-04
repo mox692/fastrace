@@ -26,6 +26,7 @@ use perfetto_protos::{
     track_event::{self, NameField},
 };
 use prost::Message;
+use std::mem;
 use std::{fs::File, io::Write, path::Path};
 
 fn init() -> Vec<TracePacket> {
@@ -93,6 +94,27 @@ fn create_debug_annotations() -> Vec<DebugAnnotation> {
 
     // TODO: avoid allocation
     vec![debug_annotation]
+}
+
+#[inline]
+fn update_debug_annotations(
+    debug_annotations: &mut Vec<DebugAnnotation>,
+) -> &mut Vec<DebugAnnotation> {
+    // TODO: use object pool to reduce the number of allocations.
+    let name_field = debug_annotation::NameField::Name("key1".to_string());
+    let value = Value::StringValue("value1".to_string());
+    // debug_annotation.name_field = Some(name_field);
+    // debug_annotation.value = Some(value);
+
+    debug_annotations
+}
+
+#[inline]
+fn with_debug_annotations(
+    debug_annotations: &mut Vec<DebugAnnotation>,
+    f: impl FnOnce(&mut Vec<DebugAnnotation>) -> &mut Vec<DebugAnnotation>,
+) -> &mut Vec<DebugAnnotation> {
+    f(debug_annotations)
 }
 
 /// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#TrackEvent
@@ -258,11 +280,8 @@ impl SpanConsumer for PerfettoReporter {
                     // proposed change
                     match &mut packet.data {
                         Some(Data::TrackEvent(trackevent)) => {
-                            let debug_annotations = &mut trackevent.debug_annotations;
-                            // TODO: update debug_annotations data
-                        }
-                        Some(Data::TrackDescriptor(_)) | None => {
-                            let debug_annotations = create_debug_annotations();
+                            // TODO: use pool.
+                            let debug_annotations = mem::take(&mut trackevent.debug_annotations);
                             let start_event = create_track_event(
                                 Some(span.typ.type_name_string()),
                                 span.thread_id,
@@ -270,6 +289,17 @@ impl SpanConsumer for PerfettoReporter {
                                 debug_annotations,
                             );
                             (&mut packet.data).replace(Data::TrackEvent(start_event));
+                        }
+                        Some(Data::TrackDescriptor(_)) | None => {
+                            // let debug_annotations = create_debug_annotations();
+                            // let start_event = create_track_event(
+                            //     Some(span.typ.type_name_string()),
+                            //     span.thread_id,
+                            //     Some(track_event::Type::SliceBegin),
+                            //     debug_annotations,
+                            // );
+                            // (&mut packet.data).replace(Data::TrackEvent(start_event));
+                            panic!("eeeeeeeeeeeeeee");
                         }
                         _ => unreachable!(),
                     }
