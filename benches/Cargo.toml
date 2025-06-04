@@ -24,3 +24,8 @@ harness = false
 name = "compare_inst"
 path = "compare_inst.rs"
 harness = false
+
+[[bench]]
+name = "perfetto"
+path = "perfetto.rs"
+harness = false
