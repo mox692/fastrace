@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749211533086,
+  "lastUpdate": 1749212202249,
   "repoUrl": "https://github.com/mox692/fastrace",
   "entries": {
     "Rust Benchmark": [
@@ -819,6 +819,66 @@ window.BENCHMARK_DATA = {
             "name": "compare/rt_trace/1000",
             "value": 35433,
             "range": "± 74",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "moymoymox@gmail.com",
+            "name": "Motoyuki Kimura",
+            "username": "mox692"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4fd9d159f103df0a75a3750600c08c35e4402142",
+          "message": "Tiny update (#7)",
+          "timestamp": "2025-06-06T21:07:27+09:00",
+          "tree_id": "b6afb321764deb9f135dbdbf14e4a4dbebd44211",
+          "url": "https://github.com/mox692/fastrace/commit/4fd9d159f103df0a75a3750600c08c35e4402142"
+        },
+        "date": 1749212201544,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "compare/fastrace/10",
+            "value": 90,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/10",
+            "value": 345,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/100",
+            "value": 92,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/100",
+            "value": 3459,
+            "range": "± 31",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/1000",
+            "value": 28353,
+            "range": "± 472",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/1000",
+            "value": 34739,
+            "range": "± 38",
             "unit": "ns/iter"
           }
         ]
