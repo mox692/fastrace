@@ -18,6 +18,7 @@ thread_local! {
 }
 
 /// Each thread has their own `LocalSpans` in TLS.
+#[derive(Debug)]
 pub(crate) struct SpanQueue {
     spans: Vec<RawSpan>,
 }

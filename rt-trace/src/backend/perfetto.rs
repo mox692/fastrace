@@ -2,10 +2,9 @@
 // * https://perfetto.dev/docs/reference/synthetic-track-event
 
 use super::perfetto_protos;
-use super::perfetto_protos::DebugAnnotation;
 use super::perfetto_protos::debug_annotation;
 use super::perfetto_protos::debug_annotation::Value;
-use crate::Type;
+use super::perfetto_protos::DebugAnnotation;
 use crate::consumer::SpanConsumer;
 use crate::span::ProcessDiscriptor;
 use crate::span::RawSpan;
@@ -14,16 +13,17 @@ use crate::span_queue::DEFAULT_BATCH_SIZE;
 use crate::utils::object_pool::Pool;
 use crate::utils::object_pool::Puller;
 use crate::utils::object_pool::Reusable;
+use crate::Type;
 use bytes::BytesMut;
 use core::cell::RefCell;
 use fastant::Anchor;
 use fastant::Instant;
 use once_cell::sync::Lazy;
 use perfetto_protos::{
-    ProcessDescriptor, ThreadDescriptor, TracePacket, TrackDescriptor, TrackEvent,
     trace_packet::{Data, OptionalTrustedPacketSequenceId, OptionalTrustedUid},
     track_descriptor::StaticOrDynamicName,
     track_event::{self, NameField},
+    ProcessDescriptor, ThreadDescriptor, TracePacket, TrackDescriptor, TrackEvent,
 };
 use prost::Message;
 use std::{fs::File, io::Write, path::Path};
@@ -53,6 +53,7 @@ impl Default for TracePackets {
 }
 
 /// Reporter implementation for Perfetto tracing.
+#[derive(Debug)]
 pub struct PerfettoReporter {
     pid: i32,
     output: File,
@@ -180,11 +181,6 @@ impl Trace {
     }
 
     #[inline]
-    fn insert(&mut self, index: usize, packet: TracePacket) {
-        self.inner.0.insert(index, packet);
-    }
-
-    #[inline]
     fn write(&mut self, output: &mut File, num_packets: usize) {
         // The next pooled object will be temporarily assigned to `self.inner` to avoid borrowing issues.
         let next = TracePackets::default();
@@ -235,7 +231,7 @@ impl SpanConsumer for PerfettoReporter {
                     packets.swap(0, num_packets);
                     num_packets += 1;
                 }
-                Type::RunTask(_) => {
+                Type::RunTask(_) | Type::RuntimePark(_) => {
                     // Start event packet
                     let debug_annotations = create_debug_annotations();
                     let start_event = create_track_event(

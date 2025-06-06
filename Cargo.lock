@@ -115,7 +115,7 @@ name = "benches"
 version = "0.0.0"
 dependencies = [
  "criterion",
- "fastrace",
+ "fastrace 0.7.9",
  "iai-callgrind",
  "rt-trace",
 ]
@@ -505,8 +505,8 @@ dependencies = [
  "crossbeam",
  "divan",
  "fastant",
- "fastrace",
- "fastrace-macro",
+ "fastrace 0.7.9",
+ "fastrace-macro 0.7.9",
  "fastrace-opentelemetry",
  "flume",
  "futures-timer",
@@ -530,10 +530,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "fastrace"
+version = "0.7.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c5a9b2e56fac2bf32bca26fdc509f674d0f2bdd15404b629ccee9c642453bb7"
+dependencies = [
+ "fastant",
+ "fastrace-macro 0.7.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot",
+ "pin-project",
+ "rand 0.9.1",
+ "rtrb",
+ "serde",
+]
+
+[[package]]
 name = "fastrace-datadog"
 version = "0.7.9"
 dependencies = [
- "fastrace",
+ "fastrace 0.7.9",
  "log",
  "reqwest",
  "rmp-serde",
@@ -545,7 +560,7 @@ name = "fastrace-futures"
 version = "0.7.9"
 dependencies = [
  "async-stream",
- "fastrace",
+ "fastrace 0.7.9",
  "futures",
  "futures-core",
  "futures-sink",
@@ -557,7 +572,7 @@ dependencies = [
 name = "fastrace-jaeger"
 version = "0.7.9"
 dependencies = [
- "fastrace",
+ "fastrace 0.7.9",
  "log",
  "thrift_codec",
 ]
@@ -566,7 +581,19 @@ dependencies = [
 name = "fastrace-macro"
 version = "0.7.9"
 dependencies = [
- "fastrace",
+ "fastrace 0.7.9",
+ "proc-macro-error2",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.101",
+]
+
+[[package]]
+name = "fastrace-macro"
+version = "0.7.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9cdabd2b113942d0f771c11a7baf0edd24098b923ac546fd39b9811c82b4220"
+dependencies = [
  "proc-macro-error2",
  "proc-macro2",
  "quote",
@@ -577,7 +604,7 @@ dependencies = [
 name = "fastrace-opentelemetry"
 version = "0.10.0"
 dependencies = [
- "fastrace",
+ "fastrace 0.7.9",
  "log",
  "opentelemetry",
  "opentelemetry-otlp",
@@ -1964,7 +1991,7 @@ dependencies = [
  "bytes",
  "criterion",
  "fastant",
- "fastrace",
+ "fastrace 0.7.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc",
  "once_cell",
  "prost",

@@ -1,5 +1,5 @@
 use config::Config;
-use consumer::{GLOBAL_SPAN_CONSUMER, SpanConsumer};
+use consumer::{SpanConsumer, GLOBAL_SPAN_CONSUMER};
 use span::{RawSpan, Span, Type};
 use span_queue::with_span_queue;
 use std::{sync::atomic::AtomicBool, time::Duration};
@@ -76,16 +76,14 @@ pub fn initialize(config: Config, consumer: impl SpanConsumer + 'static) {
     // spawn consumer thread
     std::thread::Builder::new()
         .name("global-span-consumer".to_string())
-        .spawn(move || {
-            loop {
-                std::thread::sleep(
-                    config
-                        .consumer_thread_sleep_duration
-                        .unwrap_or(Duration::from_millis(10)),
-                );
+        .spawn(move || loop {
+            std::thread::sleep(
+                config
+                    .consumer_thread_sleep_duration
+                    .unwrap_or(Duration::from_millis(10)),
+            );
 
-                GLOBAL_SPAN_CONSUMER.lock().unwrap().handle_commands();
-            }
+            GLOBAL_SPAN_CONSUMER.lock().unwrap().handle_commands();
         })
         .unwrap();
 }

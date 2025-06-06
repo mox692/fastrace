@@ -4,11 +4,11 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::Event;
 use crate::local::local_span_line::LocalSpanHandle;
 use crate::local::local_span_line::SpanLine;
 use crate::util::CollectToken;
 use crate::util::RawSpans;
+use crate::Event;
 
 const DEFAULT_SPAN_STACK_SIZE: usize = 1024;
 const DEFAULT_SPAN_QUEUE_SIZE: usize = 1024;
@@ -235,20 +235,18 @@ span1 []
                 {
                     let span_line4 = span_stack.register_span_line(None).unwrap();
                     {
-                        assert!(
-                            span_stack
-                                .register_span_line(Some(
-                                    CollectTokenItem {
-                                        trace_id: TraceId(1235),
-                                        parent_id: SpanId::default(),
-                                        collect_id: 43,
-                                        is_root: false,
-                                        is_sampled: true,
-                                    }
-                                    .into()
-                                ))
-                                .is_none()
-                        );
+                        assert!(span_stack
+                            .register_span_line(Some(
+                                CollectTokenItem {
+                                    trace_id: TraceId(1235),
+                                    parent_id: SpanId::default(),
+                                    collect_id: 43,
+                                    is_root: false,
+                                    is_sampled: true,
+                                }
+                                .into()
+                            ))
+                            .is_none());
                         assert!(span_stack.register_span_line(None).is_none());
                     }
                     let _ = span_stack.unregister_and_collect(span_line4).unwrap();
@@ -256,20 +254,18 @@ span1 []
                 {
                     let span_line5 = span_stack.register_span_line(None).unwrap();
                     {
-                        assert!(
-                            span_stack
-                                .register_span_line(Some(
-                                    CollectTokenItem {
-                                        trace_id: TraceId(1236),
-                                        parent_id: SpanId::default(),
-                                        collect_id: 44,
-                                        is_root: false,
-                                        is_sampled: true,
-                                    }
-                                    .into()
-                                ))
-                                .is_none()
-                        );
+                        assert!(span_stack
+                            .register_span_line(Some(
+                                CollectTokenItem {
+                                    trace_id: TraceId(1236),
+                                    parent_id: SpanId::default(),
+                                    collect_id: 44,
+                                    is_root: false,
+                                    is_sampled: true,
+                                }
+                                .into()
+                            ))
+                            .is_none());
                         assert!(span_stack.register_span_line(None).is_none());
                     }
                     let _ = span_stack.unregister_and_collect(span_line5).unwrap();

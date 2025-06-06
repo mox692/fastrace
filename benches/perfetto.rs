@@ -1,6 +1,6 @@
-use criterion::Criterion;
 use criterion::criterion_group;
 use criterion::criterion_main;
+use criterion::Criterion;
 use rt_trace::backend::perfetto::PerfettoReporter;
 use rt_trace::config::Config;
 use rt_trace::initialize;

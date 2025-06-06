@@ -19,6 +19,8 @@ pub struct RuntimeStart {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RuntimeTerminate {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RuntimePark {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ThreadDiscriptor {
     pub(crate) thread_name: String,
 }
@@ -33,6 +35,7 @@ impl Type {
             &Type::RunTask(_) => "run_task",
             &Type::RuntimeStart(_) => "runtime_start",
             &Type::RuntimeTerminate(_) => "runtime_terminate",
+            &Type::RuntimePark(_) => "runtime_park",
             &Type::ThreadDiscriptor(_) => "thread_discriptor",
             &Type::ProcessDiscriptor(_) => "process_discriptor",
         }
@@ -52,6 +55,7 @@ pub enum Type {
     RunTask(RunTask),
     RuntimeStart(RuntimeStart),
     RuntimeTerminate(RuntimeTerminate),
+    RuntimePark(RuntimePark),
     // perfetto specific
     ThreadDiscriptor(ThreadDiscriptor),
     ProcessDiscriptor(ProcessDiscriptor),
@@ -66,6 +70,7 @@ pub struct RawSpan {
 }
 
 /// A span that. This should be dropped in the same therad.
+#[derive(Debug)]
 pub struct Span {
     pub(crate) inner: Option<RawSpan>,
     pub(crate) span_queue_handle: Rc<RefCell<SpanQueue>>,
