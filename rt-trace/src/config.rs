@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Config {
     pub(crate) consumer_thread_sleep_duration: Option<Duration>,
 }

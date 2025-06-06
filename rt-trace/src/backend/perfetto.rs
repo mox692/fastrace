@@ -53,6 +53,7 @@ impl Default for TracePackets {
 }
 
 /// Reporter implementation for Perfetto tracing.
+#[derive(Debug)]
 pub struct PerfettoReporter {
     pid: i32,
     output: File,
@@ -230,7 +231,7 @@ impl SpanConsumer for PerfettoReporter {
                     packets.swap(0, num_packets);
                     num_packets += 1;
                 }
-                Type::RunTask(_) => {
+                Type::RunTask(_) | Type::RuntimePark(_) => {
                     // Start event packet
                     let debug_annotations = create_debug_annotations();
                     let start_event = create_track_event(
