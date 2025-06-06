@@ -43,9 +43,9 @@ impl SpanQueue {
 }
 
 impl Drop for SpanQueue {
-    /// When SpanQueue is used as a thread local value, then this drop gets called
-    /// at the time when this thread is terminated, making sure all spans would not
-    /// be lossed.
+    // When SpanQueue is used as a thread local value, then this drop gets called
+    // at the time when this thread is terminated, making sure all spans would not
+    // be lossed.
     fn drop(&mut self) {
         let spans = std::mem::take(&mut self.spans);
         send_command(Command::SendSpans(spans));

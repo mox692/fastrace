@@ -1,3 +1,6 @@
+#![allow(unused)]
+#![allow(dead_code)]
+
 use rt_trace::{
     backend::perfetto::PerfettoReporter, config::Config, flush, initialize, span, span::RunTask,
     start,
