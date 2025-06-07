@@ -13,6 +13,7 @@ rust-version = "1.70"
 fastant = "0.1"
 prost = { version = "=0.13.2" }
 prost-derive = "=0.13.2"
+parking_lot = "0.12.4"
 bytes = "1.10"
 rtrb = "0.3"
 # It's not directry used, but we need to build relatively newer anyhow to make CI happy.

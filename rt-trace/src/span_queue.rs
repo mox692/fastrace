@@ -1,31 +1,16 @@
 use once_cell::sync::Lazy;
+use parking_lot::Mutex;
 
 use crate::{
     backend::perfetto::thread_descriptor, command::Command, consumer::send_command, span::RawSpan,
     thread_id::get,
 };
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    sync::{mpsc, Arc, Mutex},
-};
+use std::{cell::RefCell, rc::Rc, sync::Arc};
 
 pub(crate) const DEFAULT_BATCH_SIZE: usize = 16384 / 16;
 
 thread_local! {
     static SPAN_QUEUE: Rc<RefCell<SpanQueue>> = {
-        let mut queue = SpanQueue::new();
-
-        // perfetto specific operation.
-        // TODO: Can we put this logic elsewhere?
-        queue.push(thread_descriptor());
-
-        Rc::new(RefCell::new(queue))
-    };
-}
-
-thread_local! {
-    static SPAN_QUEUE2: Rc<RefCell<SpanQueue>> = {
         let mut queue = SpanQueue::new();
 
         // perfetto specific operation.

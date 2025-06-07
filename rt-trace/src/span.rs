@@ -1,11 +1,7 @@
 use crate::{enabled, span_queue::SpanQueue};
 use fastant::Instant;
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    str::FromStr,
-    sync::{Arc, Mutex},
-};
+use parking_lot::Mutex;
+use std::{str::FromStr, sync::Arc};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct RunTask {
@@ -94,6 +90,6 @@ impl Drop for Span {
         };
         span.end = Instant::now();
 
-        self.span_queue_handle.lock().unwrap().push(span);
+        self.span_queue_handle.lock().push(span);
     }
 }
