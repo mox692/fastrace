@@ -45,6 +45,7 @@ pub fn span(typ: Type) -> Span {
     with_span_queue(|span_queue| {
         if enabled() {
             THREAD_INITIALIZED.with(|current| {
+                // Is this the first time this thread is creating a span?
                 if !&*current.borrow() {
                     span_queue.lock().push(thread_descriptor());
                     current.replace(true);
@@ -116,12 +117,10 @@ pub fn initialize(config: Config, consumer: impl SpanConsumer + 'static) {
 #[inline]
 pub fn flush() {
     // 1. flush the local span queue.
-
-    // Note: currently we stop the span emission until local spans are flushed
-    //       to reduce the lock contention.
     stop();
     let len = SPAN_QUEUE_STORE.len();
     for index in 0..len {
+        // Note: Without stopping the span emitting, this lock acquisition could contend.
         SPAN_QUEUE_STORE.get(index).lock().flush();
     }
     start();
