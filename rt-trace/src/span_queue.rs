@@ -102,7 +102,7 @@ impl Drop for SpanQueue {
 impl Drop for SpanQueueStore {
     // When SpanQueue is used as a thread local value, then this drop gets called
     // at the time when this thread is terminated, making sure all spans would not
-    // be lossed.
+    // be lost.
     fn drop(&mut self) {
         let len = SPAN_QUEUE_STORE.len();
         for index in 0..len {
