@@ -69,7 +69,7 @@ pub struct RawSpan {
     pub(crate) end: Instant,
 }
 
-/// A span that. This should be dropped in the same therad.
+/// A span that. This should be dropped in the same thread.
 #[derive(Debug)]
 pub struct Span {
     pub(crate) inner: Option<RawSpan>,

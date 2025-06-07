@@ -41,7 +41,7 @@ impl<T> Pool<T> {
         buffer.resize_with(n, || Reusable::new(self, (self.init)()));
     }
 
-    /// Actually allocate a new heap memory (buffer_size * T).
+    /// Actually allocate a new heap memory (`buffer_size` * T).
     pub fn puller(&self, buffer_size: usize) -> Puller<T> {
         assert!(buffer_size > 0);
         Puller {

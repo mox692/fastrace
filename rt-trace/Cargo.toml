@@ -11,10 +11,12 @@ rust-version = "1.70"
 
 [dependencies]
 fastant = "0.1"
-prost = "=0.13.2"
+prost = { version = "=0.13.2" }
 prost-derive = "=0.13.2"
 bytes = "1.10"
 rtrb = "0.3"
+# It's not directry used, but we need to build relatively newer anyhow to make CI happy.
+anyhow = "1.0.98"
 
 # TODO: remove once_cell once MSRV is above 1.80
 once_cell = "1.19"
@@ -26,8 +28,7 @@ libc = "0.2.147"
 windows-sys = { version = "0.59", features = ["Win32_System_Threading"] }
 
 [dev-dependencies]
-fastrace = "0.7.9"
-criterion = "0.5"
+# fastrace = "0.7.9"
 
 [build-dependencies]
 # we need to fix the version to match our msrv

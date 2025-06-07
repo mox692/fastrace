@@ -279,7 +279,6 @@ impl SpanConsumer for PerfettoReporter {
     }
 }
 
-/// This is called when a SpanQueue at local storage gets initialized.
 pub(crate) fn thread_descriptor() -> RawSpan {
     let thread_id = crate::utils::thread_id::get() as u64;
     RawSpan {
@@ -295,7 +294,6 @@ pub(crate) fn thread_descriptor() -> RawSpan {
     }
 }
 
-/// This is called when a SpanQueue at local storage gets initialized.
 pub(crate) fn process_descriptor() -> RawSpan {
     RawSpan {
         typ: Type::ProcessDiscriptor(ProcessDiscriptor {}),
