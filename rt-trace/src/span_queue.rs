@@ -40,9 +40,9 @@ pub(crate) struct SpanQueueStore {
 }
 
 impl SpanQueueStore {
-    pub(crate) fn get(&self, index: usize) -> Arc<Mutex<SpanQueue>> {
+    pub(crate) fn get(&self, index: usize) -> &Arc<Mutex<SpanQueue>> {
         let index = index % SHARD_NUM.load(std::sync::atomic::Ordering::Relaxed);
-        self.span_queues.get(index).unwrap().clone()
+        &self.span_queues.get(index).unwrap()
     }
 
     pub(crate) fn register(&mut self) {
@@ -116,7 +116,8 @@ impl Drop for SpanQueueStore {
 }
 
 #[inline]
-pub(crate) fn with_span_queue<R>(f: impl FnOnce(Arc<Mutex<SpanQueue>>) -> R) -> R {
-    let span_queue = SPAN_QUEUE_STORE.get(get());
+pub(crate) fn with_span_queue<R>(f: impl FnOnce(&Arc<Mutex<SpanQueue>>) -> R) -> R {
+    let thread_id = get();
+    let span_queue = SPAN_QUEUE_STORE.get(thread_id);
     f(span_queue)
 }
