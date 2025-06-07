@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749212375120,
+  "lastUpdate": 1749276354004,
   "repoUrl": "https://github.com/mox692/fastrace",
   "entries": {
     "Rust Benchmark": [
@@ -935,6 +935,66 @@ window.BENCHMARK_DATA = {
             "name": "compare/rt_trace/1000",
             "value": 34445,
             "range": "± 262",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "moymoymox@gmail.com",
+            "name": "Motoyuki Kimura",
+            "username": "mox692"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "473a9d068bd883d64dcf748988d6777b133db634",
+          "message": "Align tokio-monitor (#8)",
+          "timestamp": "2025-06-07T14:59:14+09:00",
+          "tree_id": "966be91a39cb3fb5ac48b9b46a369563eaedca55",
+          "url": "https://github.com/mox692/fastrace/commit/473a9d068bd883d64dcf748988d6777b133db634"
+        },
+        "date": 1749276353474,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "compare/fastrace/10",
+            "value": 90,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/10",
+            "value": 344,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/100",
+            "value": 90,
+            "range": "± 4",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/100",
+            "value": 3444,
+            "range": "± 113",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/1000",
+            "value": 28477,
+            "range": "± 505",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/1000",
+            "value": 34672,
+            "range": "± 45",
             "unit": "ns/iter"
           }
         ]
