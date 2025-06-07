@@ -1,7 +1,14 @@
+use once_cell::sync::Lazy;
+
 use crate::{
     backend::perfetto::thread_descriptor, command::Command, consumer::send_command, span::RawSpan,
+    thread_id::get,
 };
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{mpsc, Arc, Mutex},
+};
 
 pub(crate) const DEFAULT_BATCH_SIZE: usize = 16384 / 16;
 
@@ -17,6 +24,50 @@ thread_local! {
     };
 }
 
+thread_local! {
+    static SPAN_QUEUE2: Rc<RefCell<SpanQueue>> = {
+        let mut queue = SpanQueue::new();
+
+        // perfetto specific operation.
+        // TODO: Can we put this logic elsewhere?
+        queue.push(thread_descriptor());
+
+        Rc::new(RefCell::new(queue))
+    };
+}
+
+pub(crate) static SPAN_QUEUE_STORE: Lazy<SpanQueueStore> = Lazy::new(|| {
+    let mut store = SpanQueueStore::new();
+    for _ in 0..16 {
+        store.register();
+    }
+    store
+});
+
+pub(crate) struct SpanQueueStore {
+    span_queues: Vec<Arc<Mutex<SpanQueue>>>,
+}
+
+impl SpanQueueStore {
+    pub(crate) fn get(&self, index: usize) -> Arc<Mutex<SpanQueue>> {
+        let index = index % 16; // self.span_queues.len();
+        self.span_queues.get(index).unwrap().clone()
+    }
+
+    pub(crate) fn register(&mut self) {
+        let mut queue = SpanQueue::new();
+        queue.push(thread_descriptor());
+        self.span_queues.push(Arc::new(Mutex::new(queue)));
+    }
+}
+
+impl SpanQueueStore {
+    fn new() -> SpanQueueStore {
+        SpanQueueStore {
+            span_queues: Vec::new(),
+        }
+    }
+}
 /// Each thread has their own `LocalSpans` in TLS.
 #[derive(Debug)]
 pub(crate) struct SpanQueue {
@@ -55,4 +106,10 @@ impl Drop for SpanQueue {
 #[inline]
 pub(crate) fn with_span_queue<R>(f: impl FnOnce(&Rc<RefCell<SpanQueue>>) -> R) -> R {
     SPAN_QUEUE.with(|queue| f(queue))
+}
+
+#[inline]
+pub(crate) fn with_span_queue2<R>(index: usize, f: impl FnOnce(Arc<Mutex<SpanQueue>>) -> R) -> R {
+    let span_queue = SPAN_QUEUE_STORE.get(get());
+    f(span_queue)
 }

@@ -1,6 +1,11 @@
 use crate::{enabled, span_queue::SpanQueue};
 use fastant::Instant;
-use std::{cell::RefCell, rc::Rc, str::FromStr};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct RunTask {
@@ -73,7 +78,8 @@ pub struct RawSpan {
 #[derive(Debug)]
 pub struct Span {
     pub(crate) inner: Option<RawSpan>,
-    pub(crate) span_queue_handle: Rc<RefCell<SpanQueue>>,
+    // pub(crate) span_queue_handle: Rc<RefCell<SpanQueue>>,
+    pub(crate) span_queue_handle: Arc<Mutex<SpanQueue>>,
 }
 
 impl Drop for Span {
@@ -87,6 +93,7 @@ impl Drop for Span {
             return;
         };
         span.end = Instant::now();
-        self.span_queue_handle.borrow_mut().push(span);
+
+        self.span_queue_handle.lock().unwrap().push(span);
     }
 }
