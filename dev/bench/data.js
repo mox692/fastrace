@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749315556110,
+  "lastUpdate": 1749315590216,
   "repoUrl": "https://github.com/mox692/fastrace",
   "entries": {
     "Rust Benchmark": [
@@ -1611,6 +1611,66 @@ window.BENCHMARK_DATA = {
             "name": "compare/rt_trace/1000",
             "value": 45177,
             "range": "± 157",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "moymoymox@gmail.com",
+            "name": "Motoyuki Kimura",
+            "username": "mox692"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3285b1103e5da65566fb8a8196478a29dd7b6b90",
+          "message": "Use global span queue (#10)",
+          "timestamp": "2025-06-08T01:53:03+09:00",
+          "tree_id": "871e8b0f8943da82769ff9776dab1f9aeb370266",
+          "url": "https://github.com/mox692/fastrace/commit/3285b1103e5da65566fb8a8196478a29dd7b6b90"
+        },
+        "date": 1749315589765,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "compare/fastrace/10",
+            "value": 91,
+            "range": "± 5",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/10",
+            "value": 453,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/100",
+            "value": 91,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/100",
+            "value": 4535,
+            "range": "± 124",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/1000",
+            "value": 28611,
+            "range": "± 695",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/1000",
+            "value": 45547,
+            "range": "± 63",
             "unit": "ns/iter"
           }
         ]
