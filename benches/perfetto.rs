@@ -23,7 +23,7 @@ fn rt_trace_perfetto_harness(n: usize) {
     dummy_rt_trace_perfetto(n);
 }
 
-fn tracing_comparison(c: &mut Criterion) {
+fn perfetto(c: &mut Criterion) {
     init_rt_trace_perfetto();
 
     let mut bgroup = c.benchmark_group("compare");
@@ -37,5 +37,5 @@ fn tracing_comparison(c: &mut Criterion) {
     bgroup.finish();
 }
 
-criterion_group!(benches, tracing_comparison);
+criterion_group!(benches, perfetto);
 criterion_main!(benches);

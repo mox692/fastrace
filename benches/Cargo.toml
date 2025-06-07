@@ -29,3 +29,8 @@ harness = false
 name = "perfetto"
 path = "perfetto.rs"
 harness = false
+
+[[bench]]
+name = "perfetto_inst"
+path = "perfetto_inst.rs"
+harness = false
