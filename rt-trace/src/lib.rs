@@ -46,7 +46,7 @@ pub fn span(typ: Type) -> Span {
         if enabled() {
             THREAD_INITIALIZED.with(|current| {
                 // Is this the first time this thread is creating a span?
-                if !&*current.borrow() {
+                if !current.get() {
                     span_queue.lock().push(thread_descriptor());
                     current.replace(true);
                 }

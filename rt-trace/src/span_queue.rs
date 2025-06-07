@@ -5,7 +5,11 @@ use crate::{
     backend::perfetto::thread_descriptor, command::Command, consumer::send_command, span::RawSpan,
     thread_id::get, SHARD_NUM,
 };
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+    sync::Arc,
+};
 
 pub(crate) const DEFAULT_BATCH_SIZE: usize = 16384 / 16;
 
@@ -20,7 +24,7 @@ thread_local! {
         Rc::new(RefCell::new(queue))
     };
 
-    pub(crate) static THREAD_INITIALIZED: RefCell<bool> = RefCell::new(false);
+    pub(crate) static THREAD_INITIALIZED: Cell<bool> = Cell::new(false);
 }
 
 pub(crate) static SPAN_QUEUE_STORE: Lazy<SpanQueueStore> = Lazy::new(|| {
