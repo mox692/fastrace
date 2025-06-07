@@ -40,4 +40,7 @@ tokio = { version = "1.45.0", features = ["full"] }
 
 [profile.bench]
 lto = true
-opt-level = 3
+
+# Make this uncomment if you're going to do benchmarking.
+# [profile.release]
+# debug = true

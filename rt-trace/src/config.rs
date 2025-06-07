@@ -3,6 +3,7 @@ use std::time::Duration;
 #[derive(Default, Debug)]
 pub struct Config {
     pub(crate) consumer_thread_sleep_duration: Option<Duration>,
+    pub(crate) num_shard: Option<usize>,
 }
 
 impl Config {

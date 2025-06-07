@@ -1966,6 +1966,7 @@ dependencies = [
  "fastant",
  "libc",
  "once_cell",
+ "parking_lot",
  "prost",
  "prost-build",
  "prost-derive",

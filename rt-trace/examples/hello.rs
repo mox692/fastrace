@@ -2,7 +2,10 @@
 #![allow(dead_code)]
 
 use rt_trace::{
-    backend::perfetto::PerfettoReporter, config::Config, flush, initialize, span, span::RunTask,
+    backend::perfetto::PerfettoReporter,
+    config::Config,
+    flush, initialize,
+    span::{self, RunTask},
     start,
 };
 
@@ -21,14 +24,14 @@ fn single_thread() {
     let jh = std::thread::spawn(|| {
         // Start tracing
         {
-            let _guard = span(span::Type::RunTask(RunTask {
+            let _guard = rt_trace::span(span::Type::RunTask(RunTask {
                 name: Some("task1".to_string()),
                 ..Default::default()
             }));
             std::thread::sleep(std::time::Duration::from_micros(100));
         }
         {
-            let _guard = span(span::Type::RunTask(RunTask {
+            let _guard = rt_trace::span(span::Type::RunTask(RunTask {
                 name: Some("task2".to_string()),
                 ..Default::default()
             }));
@@ -54,14 +57,14 @@ fn multi_thread() {
         let handle = std::thread::spawn(move || {
             // Start tracing
             {
-                let _guard = span(span::Type::RunTask(RunTask {
+                let _guard = rt_trace::span(span::Type::RunTask(RunTask {
                     name: Some("task1".to_string()),
                     ..Default::default()
                 }));
                 std::thread::sleep(std::time::Duration::from_micros(100));
             }
             {
-                let _guard = span(span::Type::RunTask(RunTask {
+                let _guard = rt_trace::span(span::Type::RunTask(RunTask {
                     name: Some("task2".to_string()),
                     ..Default::default()
                 }));
