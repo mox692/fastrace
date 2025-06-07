@@ -3,7 +3,7 @@ use parking_lot::Mutex;
 
 use crate::{
     backend::perfetto::thread_descriptor, command::Command, consumer::send_command, span::RawSpan,
-    thread_id::get,
+    thread_id::get, SHARD_NUM,
 };
 use std::{cell::RefCell, rc::Rc, sync::Arc};
 
@@ -19,11 +19,13 @@ thread_local! {
 
         Rc::new(RefCell::new(queue))
     };
+
+    pub(crate) static THREAD_INITIALIZED: RefCell<bool> = RefCell::new(false);
 }
 
 pub(crate) static SPAN_QUEUE_STORE: Lazy<SpanQueueStore> = Lazy::new(|| {
     let mut store = SpanQueueStore::new();
-    for _ in 0..16 {
+    for _ in 0..SHARD_NUM.load(std::sync::atomic::Ordering::Relaxed) {
         store.register();
     }
     store
@@ -35,7 +37,7 @@ pub(crate) struct SpanQueueStore {
 
 impl SpanQueueStore {
     pub(crate) fn get(&self, index: usize) -> Arc<Mutex<SpanQueue>> {
-        let index = index % 16; // self.span_queues.len();
+        let index = index % SHARD_NUM.load(std::sync::atomic::Ordering::Relaxed);
         self.span_queues.get(index).unwrap().clone()
     }
 
@@ -43,6 +45,10 @@ impl SpanQueueStore {
         let mut queue = SpanQueue::new();
         queue.push(thread_descriptor());
         self.span_queues.push(Arc::new(Mutex::new(queue)));
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.span_queues.len()
     }
 }
 
@@ -71,10 +77,15 @@ impl SpanQueue {
     pub(crate) fn push(&mut self, span: RawSpan) {
         self.spans.push(span);
         if self.spans.len() == DEFAULT_BATCH_SIZE {
-            // flush spans
-            let spans = std::mem::replace(&mut self.spans, Vec::with_capacity(DEFAULT_BATCH_SIZE));
-            send_command(Command::SendSpans(spans));
+            self.flush();
         }
+    }
+
+    #[inline]
+    pub(crate) fn flush(&mut self) {
+        // flush spans
+        let spans = std::mem::replace(&mut self.spans, Vec::with_capacity(DEFAULT_BATCH_SIZE));
+        send_command(Command::SendSpans(spans));
     }
 }
 
@@ -85,6 +96,18 @@ impl Drop for SpanQueue {
     fn drop(&mut self) {
         let spans = std::mem::take(&mut self.spans);
         send_command(Command::SendSpans(spans));
+    }
+}
+
+impl Drop for SpanQueueStore {
+    // When SpanQueue is used as a thread local value, then this drop gets called
+    // at the time when this thread is terminated, making sure all spans would not
+    // be lossed.
+    fn drop(&mut self) {
+        let len = SPAN_QUEUE_STORE.len();
+        for index in 0..len {
+            SPAN_QUEUE_STORE.get(index).lock().flush();
+        }
     }
 }
 

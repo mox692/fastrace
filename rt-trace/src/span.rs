@@ -74,7 +74,6 @@ pub struct RawSpan {
 #[derive(Debug)]
 pub struct Span {
     pub(crate) inner: Option<RawSpan>,
-    // pub(crate) span_queue_handle: Rc<RefCell<SpanQueue>>,
     pub(crate) span_queue_handle: Arc<Mutex<SpanQueue>>,
 }
 
