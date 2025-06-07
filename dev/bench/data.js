@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749282758273,
+  "lastUpdate": 1749284888903,
   "repoUrl": "https://github.com/mox692/fastrace",
   "entries": {
     "Rust Benchmark": [
@@ -1051,6 +1051,62 @@ window.BENCHMARK_DATA = {
             "name": "compare/rt_trace/1000",
             "value": 43845,
             "range": "± 117",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "mox692",
+            "username": "mox692"
+          },
+          "committer": {
+            "name": "mox692",
+            "username": "mox692"
+          },
+          "id": "d81be2fb6d585c402162e5fcbfeb3afc36017f4e",
+          "message": "Use global span queue",
+          "timestamp": "2025-06-07T05:59:19Z",
+          "url": "https://github.com/mox692/fastrace/pull/10/commits/d81be2fb6d585c402162e5fcbfeb3afc36017f4e"
+        },
+        "date": 1749284888466,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "compare/fastrace/10",
+            "value": 91,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/10",
+            "value": 414,
+            "range": "± 0",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/100",
+            "value": 90,
+            "range": "± 14",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/100",
+            "value": 4140,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/1000",
+            "value": 28046,
+            "range": "± 310",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/1000",
+            "value": 41379,
+            "range": "± 40",
             "unit": "ns/iter"
           }
         ]
