@@ -26,29 +26,43 @@ use perfetto_protos::{
     ProcessDescriptor, ThreadDescriptor, TracePacket, TrackDescriptor, TrackEvent,
 };
 use prost::Message;
+use std::mem;
 use std::{fs::File, io::Write, path::Path};
 
 fn init() -> Vec<TracePacket> {
     vec![TracePacket::default(); DEFAULT_BATCH_SIZE * 2]
 }
 
-fn clear(_vec: &mut Vec<TracePacket>) {
+fn clear<T>(_vec: &mut T) {
     // do nothing
 }
 
-static TRACE_PACKETS_POOL: Lazy<Pool<Vec<TracePacket>>> = Lazy::new(|| Pool::new(init, clear));
+static TRACE_PACKETS_POOL: Lazy<Pool<Vec<TracePacket>>> =
+    Lazy::new(|| Pool::new(init, clear::<Vec<TracePacket>>));
+static DEBUG_ANNOTATION_POOL: Lazy<Pool<Vec<DebugAnnotation>>> =
+    Lazy::new(|| Pool::new(Vec::new, clear::<Vec<DebugAnnotation>>));
 
 thread_local! {
     static TRACE_PACKETS_PULLER: RefCell<Puller<'static, Vec<TracePacket>>> = RefCell::new(TRACE_PACKETS_POOL.puller(2));
+    static DEBUG_ANNOTATION_PULLER: RefCell<Puller<'static, Vec<DebugAnnotation>>> = RefCell::new(DEBUG_ANNOTATION_POOL.puller(2));
 }
 
 struct TracePackets(pub(crate) Reusable<'static, Vec<TracePacket>>);
+struct DebugAnnotations(pub(crate) Reusable<'static, Vec<DebugAnnotation>>);
 
 impl Default for TracePackets {
     fn default() -> Self {
         TRACE_PACKETS_PULLER
             .try_with(|puller| TracePackets(puller.borrow_mut().pull()))
             .unwrap_or_else(|_| TracePackets(Reusable::new(&*TRACE_PACKETS_POOL, init())))
+    }
+}
+
+impl Default for DebugAnnotations {
+    fn default() -> Self {
+        DEBUG_ANNOTATION_PULLER
+            .try_with(|puller| DebugAnnotations(puller.borrow_mut().pull()))
+            .unwrap_or_else(|_| DebugAnnotations(Reusable::new(&*&DEBUG_ANNOTATION_POOL, vec![])))
     }
 }
 
@@ -81,6 +95,27 @@ fn create_debug_annotations() -> Vec<DebugAnnotation> {
 
     // TODO: avoid allocation
     vec![debug_annotation]
+}
+
+#[inline]
+fn update_debug_annotations(
+    debug_annotations: &mut Vec<DebugAnnotation>,
+) -> &mut Vec<DebugAnnotation> {
+    // TODO: use object pool to reduce the number of allocations.
+    let name_field = debug_annotation::NameField::Name("key1".to_string());
+    let value = Value::StringValue("value1".to_string());
+    // debug_annotation.name_field = Some(name_field);
+    // debug_annotation.value = Some(value);
+
+    debug_annotations
+}
+
+#[inline]
+fn with_debug_annotations(
+    debug_annotations: &mut Vec<DebugAnnotation>,
+    f: impl FnOnce(&mut Vec<DebugAnnotation>) -> &mut Vec<DebugAnnotation>,
+) -> &mut Vec<DebugAnnotation> {
+    f(debug_annotations)
 }
 
 /// Docs: https://perfetto.dev/docs/reference/trace-packet-proto#TrackEvent
@@ -165,8 +200,6 @@ fn append_process_descriptor(trace: &mut TracePacket, pid: i32, track_uuid: u64)
 
     trace.data = Some(Data::TrackDescriptor(track_descriptor));
     trace.optional_trusted_uid = Some(OptionalTrustedUid::TrustedUid(42));
-    // Insert the packet at the beginning
-    // trace.insert(0, packet);
 }
 struct Trace {
     pub(self) inner: TracePackets,
@@ -233,31 +266,56 @@ impl SpanConsumer for PerfettoReporter {
                 }
                 Type::RunTask(_) | Type::RuntimePark(_) => {
                     // Start event packet
-                    let debug_annotations = create_debug_annotations();
-                    let start_event = create_track_event(
-                        Some(span.typ.type_name_string()),
-                        span.thread_id,
-                        Some(track_event::Type::SliceBegin),
-                        debug_annotations,
-                    );
-                    packet.data = Some(Data::TrackEvent(start_event));
+                    // let debug_annotations = create_debug_annotations();
+                    // let start_event = create_track_event(
+                    //     Some(span.typ.type_name_string()),
+                    //     span.thread_id,
+                    //     Some(track_event::Type::SliceBegin),
+                    //     debug_annotations,
+                    // );
+                    // proposed change
+                    match &mut packet.data {
+                        Some(Data::TrackEvent(trackevent)) => {
+                            // TODO: use pool.
+                            let debug_annotations = mem::take(&mut trackevent.debug_annotations);
+                            let start_event = create_track_event(
+                                Some(span.typ.type_name_string()),
+                                span.thread_id,
+                                Some(track_event::Type::SliceBegin),
+                                debug_annotations,
+                            );
+                            (&mut packet.data).replace(Data::TrackEvent(start_event));
+                        }
+                        Some(Data::TrackDescriptor(_)) | None => {
+                            // let debug_annotations = create_debug_annotations();
+                            // let start_event = create_track_event(
+                            //     Some(span.typ.type_name_string()),
+                            //     span.thread_id,
+                            //     Some(track_event::Type::SliceBegin),
+                            //     debug_annotations,
+                            // );
+                            // (&mut packet.data).replace(Data::TrackEvent(start_event));
+                            panic!("eeeeeeeeeeeeeee");
+                        }
+                        _ => unreachable!(),
+                    }
                     packet.timestamp = Some(span.start.as_unix_nanos(&anchor));
                     packet.optional_trusted_packet_sequence_id =
                         Some(OptionalTrustedPacketSequenceId::TrustedPacketSequenceId(42));
 
                     num_packets += 1;
-                    let packet = unsafe { packets.get_unchecked_mut(num_packets) };
 
                     // End event packet
+                    let packet = unsafe { packets.get_unchecked_mut(num_packets) };
                     let debug_annotations = create_debug_annotations();
                     let end_event = create_track_event(
-                        None,
+                        Some(span.typ.type_name_string()),
                         span.thread_id,
                         Some(track_event::Type::SliceEnd),
                         debug_annotations,
                     );
+                    (&mut packet.data).replace(Data::TrackEvent(end_event));
 
-                    packet.data = Some(Data::TrackEvent(end_event));
                     packet.trusted_pid = Some(pid);
                     packet.timestamp = Some(span.end.as_unix_nanos(&anchor));
                     packet.optional_trusted_packet_sequence_id =
