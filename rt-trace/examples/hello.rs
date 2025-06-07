@@ -4,7 +4,7 @@
 use rt_trace::{
     backend::perfetto::PerfettoReporter,
     config::Config,
-    flush, flush2, initialize,
+    flush, initialize,
     span::{self, RunTask},
     start,
 };
@@ -77,8 +77,6 @@ fn multi_thread() {
     for handle in handles.into_iter() {
         handle.join().unwrap();
     }
-
-    flush2();
 
     flush();
 }

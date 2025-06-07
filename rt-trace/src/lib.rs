@@ -115,23 +115,22 @@ pub fn initialize(config: Config, consumer: impl SpanConsumer + 'static) {
 /// thread and collect the spans into the consumer thread *before* calling this function.
 #[inline]
 pub fn flush() {
+    // 1. flush the local span queue.
+
+    // Note: currently we stop the span emission until local spans are flushed
+    //       to reduce the lock contention.
+    stop();
+    let len = SPAN_QUEUE_STORE.len();
+    for index in 0..len {
+        SPAN_QUEUE_STORE.get(index).lock().flush();
+    }
+    start();
+
+    // 2. flush the global span queue.
     let handle = std::thread::spawn(|| {
         let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock().unwrap();
         global_consumer.handle_commands();
     });
 
     handle.join().unwrap()
-}
-
-#[inline]
-pub fn flush2() {
-    // To reduce the contention
-    stop();
-
-    let len = SPAN_QUEUE_STORE.len();
-    for index in 0..len {
-        SPAN_QUEUE_STORE.get(index).lock().flush();
-    }
-
-    start();
 }

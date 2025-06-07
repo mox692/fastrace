@@ -6,7 +6,6 @@ use std::{
     time::Duration,
 };
 
-use crate::flush2;
 use crate::{
     config::Config,
     consumer::SpanConsumer,
@@ -68,7 +67,6 @@ fn basic() {
         handle.join().unwrap();
     }
 
-    flush2();
     flush();
 
     let expected = vec![
