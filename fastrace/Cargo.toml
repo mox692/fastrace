@@ -55,6 +55,3 @@ tracing-subscriber = { version = "0.3.19" }
 # [[bench]]
 # harness = false
 # name = "spsc"
-
-# [profile.release]
-# debug = true

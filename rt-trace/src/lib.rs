@@ -12,10 +12,7 @@ pub(crate) mod span_queue;
 mod utils;
 use fastant::Instant;
 
-use crate::{
-    span_queue::{with_span_queue2, SPAN_QUEUE_STORE},
-    utils::thread_id::get,
-};
+use crate::span_queue::with_span_queue;
 
 #[cfg(test)]
 mod tests;
@@ -36,25 +33,7 @@ fn set_enabled(set: bool) {
 /// Create a span.
 #[inline]
 pub fn span(typ: Type) -> Span {
-    // with_span_queue(|span_queue| {
-    //     if enabled() {
-    //         Span {
-    //             inner: Some(RawSpan {
-    //                 typ,
-    //                 thread_id: thread_id::get() as u64,
-    //                 start: Instant::now(),
-    //                 end: Instant::ZERO,
-    //             }),
-    //             span_queue_handle: span_queue.clone(),
-    //         }
-    //     } else {
-    //         Span {
-    //             inner: None,
-    //             span_queue_handle: span_queue.clone(),
-    //         }
-    //     }
-    // })
-    with_span_queue2(get(), |span_queue| {
+    with_span_queue(|span_queue| {
         if enabled() {
             Span {
                 inner: Some(RawSpan {

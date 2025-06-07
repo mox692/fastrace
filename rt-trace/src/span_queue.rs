@@ -104,12 +104,7 @@ impl Drop for SpanQueue {
 }
 
 #[inline]
-pub(crate) fn with_span_queue<R>(f: impl FnOnce(&Rc<RefCell<SpanQueue>>) -> R) -> R {
-    SPAN_QUEUE.with(|queue| f(queue))
-}
-
-#[inline]
-pub(crate) fn with_span_queue2<R>(index: usize, f: impl FnOnce(Arc<Mutex<SpanQueue>>) -> R) -> R {
+pub(crate) fn with_span_queue<R>(f: impl FnOnce(Arc<Mutex<SpanQueue>>) -> R) -> R {
     let span_queue = SPAN_QUEUE_STORE.get(get());
     f(span_queue)
 }
