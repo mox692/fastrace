@@ -24,12 +24,8 @@ jobs:
         run: cargo bench --bench wall* -- --output-format bencher | tee output.txt
       - name: Run instruction count benchmark 
         run: cargo bench --bench 'inst_*' 2>&1 | tee inst.txt
-      - name: cat inst.txt
-        run: cat inst.txt
       - name: Convert format
-        run: python3 ./benches/a.py inst.txt 2>&1 | tee -a output.txt
-      - name: echo 
-        run: cat ./output.txt
+        run: python3 ./benches/fmt.py inst.txt 2>&1 | tee -a output.txt
       - name: Download previous benchmark data
         uses: actions/cache@v4
         with:
