@@ -86,12 +86,17 @@ pub fn start() {
     set_enabled(true)
 }
 
+const DEFAULT_NUM_SHARD: usize = 16;
+
 /// Initialize tracing.
 #[inline]
 pub fn initialize(config: Config, consumer: impl SpanConsumer + 'static) {
-    SHARD_NUM.store(config.num_shard.unwrap_or(16), Ordering::Relaxed);
+    SHARD_NUM.store(
+        config.num_shard.unwrap_or(DEFAULT_NUM_SHARD),
+        Ordering::Relaxed,
+    );
 
-    GLOBAL_SPAN_CONSUMER.lock().unwrap().consumer = Some(Box::new(consumer));
+    GLOBAL_SPAN_CONSUMER.lock().consumer = Some(Box::new(consumer));
 
     // spawn consumer thread
     std::thread::Builder::new()
@@ -103,7 +108,7 @@ pub fn initialize(config: Config, consumer: impl SpanConsumer + 'static) {
                     .unwrap_or(Duration::from_millis(10)),
             );
 
-            GLOBAL_SPAN_CONSUMER.lock().unwrap().handle_commands();
+            GLOBAL_SPAN_CONSUMER.lock().handle_commands();
         })
         .unwrap();
 }
@@ -126,10 +131,7 @@ pub fn flush() {
     start();
 
     // 2. flush the global span queue.
-    let handle = std::thread::spawn(|| {
-        let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock().unwrap();
-        global_consumer.flush();
-    });
-
-    handle.join().unwrap()
+    let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock();
+    global_consumer.handle_commands();
+    global_consumer.flush();
 }
