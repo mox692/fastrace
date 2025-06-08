@@ -23,7 +23,9 @@ jobs:
       - name: Run walltime benchmark 
         run: cargo bench --bench wall* -- --output-format bencher | tee output.txt
       - name: Run instruction count benchmark 
-        run: cargo bench --bench inst_* | tee inst.txt
+        run: cargo bench --bench 'inst_*' 2>&1 | tee inst.txt
+      - name: cat inst.txt
+        run: cat inst.txt
       - name: Convert format
         run: python3 ./benches/a.py inst.txt | tee -a output.txt
       - name: echo 
