@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749366823443,
+  "lastUpdate": 1749367544099,
   "repoUrl": "https://github.com/mox692/fastrace",
   "entries": {
     "Rust Benchmark": [
@@ -2265,6 +2265,80 @@ window.BENCHMARK_DATA = {
             "name": "compare/rt_trace_perfetto/10000",
             "value": 475349,
             "range": "± 4807",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "mox692",
+            "username": "mox692"
+          },
+          "committer": {
+            "name": "mox692",
+            "username": "mox692"
+          },
+          "id": "7d9b07620ddb92b2f95dc786f7b2165fe8fbd6c8",
+          "message": "Add tiny updates for bench",
+          "timestamp": "2025-06-07T16:53:07Z",
+          "url": "https://github.com/mox692/fastrace/pull/11/commits/7d9b07620ddb92b2f95dc786f7b2165fe8fbd6c8"
+        },
+        "date": 1749367543600,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "compare/fastrace/10",
+            "value": 91,
+            "range": "± 3",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/10",
+            "value": 476,
+            "range": "± 1",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/100",
+            "value": 91,
+            "range": "± 6",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/100",
+            "value": 4764,
+            "range": "± 9",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/1000",
+            "value": 28035,
+            "range": "± 381",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/1000",
+            "value": 47600,
+            "range": "± 131",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace_perfetto/100",
+            "value": 5144,
+            "range": "± 13",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace_perfetto/1000",
+            "value": 51523,
+            "range": "± 862",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace_perfetto/10000",
+            "value": 515174,
+            "range": "± 4590",
             "unit": "ns/iter"
           }
         ]
