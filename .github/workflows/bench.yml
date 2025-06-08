@@ -21,7 +21,7 @@ jobs:
       - run: rustup toolchain update nightly && rustup default nightly
       - run: cargo install --version 0.14.2 iai-callgrind-runner
       - name: Run walltime benchmark 
-        run: cargo bench --bench wall* -- --output-format bencher | tee -a output.txt
+        run: cargo bench --bench wall* -- --output-format bencher | tee output.txt
       - name: Run instruction count benchmark 
         run: cargo bench --bench inst_* | tee inst.txt
       - name: Convert format
