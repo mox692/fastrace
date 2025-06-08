@@ -128,7 +128,7 @@ pub fn flush() {
     // 2. flush the global span queue.
     let handle = std::thread::spawn(|| {
         let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock().unwrap();
-        global_consumer.handle_commands();
+        global_consumer.flush();
     });
 
     handle.join().unwrap()

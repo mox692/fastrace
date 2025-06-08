@@ -2,7 +2,10 @@ use crate::{
     backend::perfetto::process_descriptor,
     command::Command,
     span::RawSpan,
-    utils::spsc::{bounded, Receiver, Sender},
+    utils::{
+        ring_buffer::RingBuffer,
+        spsc::{bounded, Receiver, Sender},
+    },
 };
 use std::{
     cell::UnsafeCell,
@@ -56,11 +59,15 @@ pub(crate) static GLOBAL_SPAN_CONSUMER: Mutex<GlobalSpanConsumer> =
 
 pub(crate) struct GlobalSpanConsumer {
     pub(crate) consumer: Option<Box<dyn SpanConsumer>>,
+    pub(crate) commands: Option<RingBuffer<Command>>,
 }
 
 impl GlobalSpanConsumer {
     const fn new() -> Self {
-        Self { consumer: None }
+        Self {
+            consumer: None,
+            commands: None,
+        }
     }
 
     pub(crate) fn handle_commands(&mut self) {
@@ -68,6 +75,20 @@ impl GlobalSpanConsumer {
         let rxs: Vec<Receiver<Command>> = guard.drain(..).collect();
         drop(guard);
 
+        for mut rx in rxs {
+            while let Ok(Some(command)) = rx.try_recv() {
+                self.push_overwrite(command);
+            }
+        }
+    }
+
+    pub(crate) fn push_overwrite(&mut self, command: Command) {
+        self.commands
+            .get_or_insert_with(|| RingBuffer::new(8))
+            .push_overwrite(command);
+    }
+
+    pub(crate) fn flush(&mut self) {
         let Some(consumer) = &mut self.consumer else {
             panic!("Consumer should be set");
         };
@@ -79,13 +100,16 @@ impl GlobalSpanConsumer {
             set_flushed_once(true);
         }
 
-        for mut rx in rxs {
-            while let Ok(Some(Command::SendSpans(span))) = rx.try_recv() {
-                // Currently we perform `consume` everytime we get a receiver. This ensures
-                // that the size of the span is less than `DEFAULT_SPAN_QUEUE_SIZE`, making it
-                // easy to evaluate the load.
-                consumer.as_mut().consume(span.as_slice());
-            }
-        }
+        let spans: Vec<RawSpan> = self.commands.as_mut().map_or_else(Vec::new, |commands| {
+            commands
+                .drain()
+                .into_iter()
+                .flat_map(|cmd| match cmd {
+                    Command::SendSpans(spans) => spans,
+                })
+                .collect()
+        });
+
+        self.consumer.as_mut().unwrap().consume(&spans);
     }
 }
