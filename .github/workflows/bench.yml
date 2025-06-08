@@ -27,7 +27,7 @@ jobs:
       - name: cat inst.txt
         run: cat inst.txt
       - name: Convert format
-        run: python3 ./benches/a.py inst.txt | tee -a output.txt
+        run: python3 ./benches/a.py inst.txt 2>&1 | tee -a output.txt
       - name: echo 
         run: cat ./output.txt
       - name: Download previous benchmark data
