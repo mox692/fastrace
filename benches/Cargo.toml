@@ -11,7 +11,7 @@ license = "MIT"
 
 [dev-dependencies]
 criterion = "0.5.1"
-iai-callgrind = "0.14.1"
+iai-callgrind = "0.14.2"
 fastrace = { path = "../fastrace" }
 rt-trace = { path = "../rt-trace" }
 
