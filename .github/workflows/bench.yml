@@ -20,8 +20,10 @@ jobs:
         uses: taiki-e/install-action@valgrind
       - run: rustup toolchain update nightly && rustup default nightly
       - run: cargo install --version 0.14.2 iai-callgrind-runner
-      - name: Run benchmark
-        run: cargo bench -- --output-format bencher | tee output.txt
+      - name: Run walltime benchmark 
+        run: cargo bench --bench wall* -- --output-format bencher | tee -a output.txt
+      - name: Run instruction count benchmark 
+        run: cargo bench --bench inst* | tee -a output.txt
       - name: Download previous benchmark data
         uses: actions/cache@v4
         with:

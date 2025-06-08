@@ -5,7 +5,7 @@ use rt_trace::backend::perfetto::PerfettoReporter;
 use rt_trace::config::Config;
 use rt_trace::initialize;
 use rt_trace::span;
-use rt_trace::span::RuntimeStart;
+use rt_trace::span::RunTask;
 use rt_trace::start;
 
 fn init_rt_trace_perfetto() {
@@ -17,7 +17,7 @@ fn init_rt_trace_perfetto() {
 fn rt_trace_perfetto_harness(n: usize) {
     fn dummy_rt_trace_perfetto(n: usize) {
         for _ in 0..n {
-            let _guard = span(span::Type::RuntimeStart(RuntimeStart {}));
+            let _guard = span(span::Type::RunTask(RunTask::default()));
         }
     }
     dummy_rt_trace_perfetto(n);
