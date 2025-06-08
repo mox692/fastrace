@@ -68,19 +68,17 @@ def convert(stream):
     for line in stream:
         line = line.rstrip()
 
-        # テスト名行?
         m = header_re.match(line)
         if m:
             current_test = m.group(1)
             continue
 
-        # メトリック行?
         m = metric_re.match(line)
         if m and current_test:
             metric, value = m.groups()
             key = metric.strip().lower().replace(' ', '_')
             value = value.replace(',', '')
-            print(f"{key} {current_test} ... bench: {value} (+/- 0)")
+            print(f"test {current_test}____{key} ... bench: {value} count/iter (+/- 0)")
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
