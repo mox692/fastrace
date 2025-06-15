@@ -31,8 +31,8 @@ fn bench_rt_trace(_: ()) {
     let n = 100_000;
     fn dummy_rt_trace(n: usize) {
         for _ in 0..n {
-            let _guard = rt_trace::span(rt_trace::span::Type::RuntimeStart(
-                rt_trace::span::RuntimeStart {},
+            let _guard = rt_trace::span(rt_trace::span::Type::RunTask(
+                rt_trace::span::RunTask::default(),
             ));
         }
     }

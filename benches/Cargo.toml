@@ -11,21 +11,26 @@ license = "MIT"
 
 [dev-dependencies]
 criterion = "0.5.1"
-iai-callgrind = "0.14.1"
+iai-callgrind = "0.14.2"
 fastrace = { path = "../fastrace" }
 rt-trace = { path = "../rt-trace" }
 
 [[bench]]
-name = "compare"
-path = "compare.rs"
+name = "wall_compare"
+path = "walltime/compare.rs"
 harness = false
 
 [[bench]]
-name = "compare_inst"
-path = "compare_inst.rs"
+name = "wall_perfetto"
+path = "walltime/perfetto.rs"
 harness = false
 
 [[bench]]
-name = "perfetto"
-path = "perfetto.rs"
+name = "inst_compare"
+path = "instruction_count/compare.rs"
+harness = false
+
+[[bench]]
+name = "inst_perfetto"
+path = "instruction_count/perfetto.rs"
 harness = false
