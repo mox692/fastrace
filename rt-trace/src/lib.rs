@@ -108,7 +108,7 @@ pub fn initialize(config: Config, consumer: impl SpanConsumer + 'static) {
                     .unwrap_or(Duration::from_millis(10)),
             );
 
-            GLOBAL_SPAN_CONSUMER.lock().handle_commands();
+            GLOBAL_SPAN_CONSUMER.lock().collect_and_push_commands();
         })
         .unwrap();
 }
@@ -132,6 +132,6 @@ pub fn flush() {
 
     // 2. flush the global span queue.
     let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock();
-    global_consumer.handle_commands();
+    global_consumer.collect_and_push_commands();
     global_consumer.flush();
 }

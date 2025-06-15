@@ -59,18 +59,18 @@ pub(crate) static GLOBAL_SPAN_CONSUMER: Mutex<GlobalSpanConsumer> =
 
 pub(crate) struct GlobalSpanConsumer {
     pub(crate) consumer: Option<Box<dyn SpanConsumer>>,
-    pub(crate) commands: Option<RingBuffer<Command>>,
+    pub(crate) command_buf: Option<RingBuffer<Command>>,
 }
 
 impl GlobalSpanConsumer {
     const fn new() -> Self {
         Self {
             consumer: None,
-            commands: None,
+            command_buf: None,
         }
     }
 
-    pub(crate) fn handle_commands(&mut self) {
+    pub(crate) fn collect_and_push_commands(&mut self) {
         let mut guard = SPSC_RXS.lock();
         let rxs: Vec<Receiver<Command>> = guard.drain(..).collect();
         drop(guard);
@@ -83,7 +83,7 @@ impl GlobalSpanConsumer {
     }
 
     pub(crate) fn push_overwrite(&mut self, command: Command) {
-        self.commands
+        self.command_buf
             .get_or_insert_with(|| RingBuffer::new(SHARD_NUM.load(Ordering::Relaxed) * 2))
             .push_overwrite(command);
     }
@@ -101,7 +101,7 @@ impl GlobalSpanConsumer {
         }
 
         let spans: Vec<RawSpan> = self
-            .commands
+            .command_buf
             .get_or_insert_with(|| RingBuffer::new(SHARD_NUM.load(Ordering::Relaxed) * 2))
             .drain()
             .into_iter()

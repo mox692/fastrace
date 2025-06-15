@@ -49,29 +49,3 @@ impl<T> RingBuffer<T> {
         out
     }
 }
-
-// TODO: enable
-// #[cfg(test)]
-// mod tests {
-//     use super::RingBuffer;
-
-//     #[test]
-//     fn basic_enqueue_and_overwrite() {
-//         let mut buf = RingBuffer::new(3);
-//         buf.push_overwrite(1);
-//         buf.push_overwrite(2);
-//         assert_eq!(buf.inner.iter().cloned().collect::<Vec<_>>(), vec![1, 2]);
-//         // Fill to capacity
-//         buf.push_overwrite(3);
-//         assert_eq!(buf.inner.iter().cloned().collect::<Vec<_>>(), vec![1, 2, 3]);
-//         // Overwrite oldest
-//         buf.push_overwrite(4);
-//         assert_eq!(buf.inner.iter().cloned().collect::<Vec<_>>(), vec![2, 3, 4]);
-//         // Multiple items (push individually)
-//         buf.push_overwrite(5);
-//         buf.push_overwrite(6);
-//         buf.push_overwrite(7);
-//         // Should end up with last 3 in order: 5,6,7 overwrite
-//         assert_eq!(buf.inner.iter().cloned().collect::<Vec<_>>(), vec![5, 6, 7]);
-//     }
-// }
