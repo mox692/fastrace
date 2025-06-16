@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749985487824,
+  "lastUpdate": 1750083557119,
   "repoUrl": "https://github.com/mox692/fastrace",
   "entries": {
     "Rust Benchmark": [
@@ -3305,6 +3305,80 @@ window.BENCHMARK_DATA = {
             "name": "compare/rt_trace_perfetto/10000",
             "value": 551156,
             "range": "± 773",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "name": "mox692",
+            "username": "mox692"
+          },
+          "committer": {
+            "name": "mox692",
+            "username": "mox692"
+          },
+          "id": "e1a6a59ac9939e1bd0afa0acb76a03709b144619",
+          "message": "Implement global queue rotation",
+          "timestamp": "2025-06-08T08:14:01Z",
+          "url": "https://github.com/mox692/fastrace/pull/13/commits/e1a6a59ac9939e1bd0afa0acb76a03709b144619"
+        },
+        "date": 1750083555725,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "compare/fastrace/10000",
+            "value": 274779,
+            "range": "± 18801",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/10000",
+            "value": 469482,
+            "range": "± 14402",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/100000",
+            "value": 2900379,
+            "range": "± 105128",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/100000",
+            "value": 4695425,
+            "range": "± 16397",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/1000000",
+            "value": 29194637,
+            "range": "± 531613",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/1000000",
+            "value": 46987554,
+            "range": "± 56939",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace_perfetto/100",
+            "value": 4700,
+            "range": "± 7",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace_perfetto/1000",
+            "value": 47031,
+            "range": "± 68",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace_perfetto/10000",
+            "value": 471062,
+            "range": "± 2636",
             "unit": "ns/iter"
           }
         ]
