@@ -47,7 +47,18 @@ pub fn span(typ: Type) -> Span {
             THREAD_INITIALIZED.with(|current| {
                 // Is this the first time this thread is creating a span?
                 if !current.get() {
-                    span_queue.lock().push(thread_descriptor());
+                    // If so, we need to initialize the thread-local span queue.
+                    {
+                        let mut guard = span_queue.lock();
+                        guard.push(thread_descriptor());
+                        guard.flush();
+                    }
+                    {
+                        let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock();
+                        global_consumer.collect_and_push_commands();
+                        global_consumer.flush();
+                    }
+
                     current.replace(true);
                 }
 

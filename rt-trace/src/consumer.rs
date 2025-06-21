@@ -72,17 +72,16 @@ impl GlobalSpanConsumer {
 
     pub(crate) fn collect_and_push_commands(&mut self) {
         let mut guard = SPSC_RXS.lock();
-        let rxs: Vec<Receiver<Command>> = guard.drain(..).collect();
-        drop(guard);
+        let rxs = &mut *guard;
 
-        for mut rx in rxs {
+        for rx in rxs {
             while let Ok(Some(command)) = rx.try_recv() {
                 self.push_overwrite(command);
             }
         }
     }
 
-    pub(crate) fn push_overwrite(&mut self, command: Command) {
+    fn push_overwrite(&mut self, command: Command) {
         self.command_buf
             .get_or_insert_with(|| RingBuffer::new(SHARD_NUM.load(Ordering::Relaxed) * 2))
             .push_overwrite(command);
@@ -100,16 +99,19 @@ impl GlobalSpanConsumer {
             set_flushed_once(true);
         }
 
-        let spans: Vec<RawSpan> = self
-            .command_buf
-            .get_or_insert_with(|| RingBuffer::new(SHARD_NUM.load(Ordering::Relaxed) * 2))
-            .drain()
-            .into_iter()
-            .flat_map(|cmd| match cmd {
-                Command::SendSpans(spans) => spans,
-            })
-            .collect();
+        let Some(spans) = self.command_buf.as_mut().map(|buf| {
+            buf.drain()
+                .into_iter()
+                .map(|cmd| match cmd {
+                    Command::SendSpans(spans) => spans,
+                })
+                .collect::<Vec<_>>()
+        }) else {
+            return;
+        };
 
-        self.consumer.as_mut().unwrap().consume(&spans);
+        for spans in &spans {
+            self.consumer.as_mut().unwrap().consume(spans);
+        }
     }
 }

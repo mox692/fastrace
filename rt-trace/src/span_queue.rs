@@ -1,35 +1,19 @@
 use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
-use crate::{
-    backend::perfetto::thread_descriptor, command::Command, consumer::send_command, span::RawSpan,
-    thread_id::get, SHARD_NUM,
-};
-use std::{
-    cell::{Cell, RefCell},
-    rc::Rc,
-    sync::Arc,
-};
+use crate::{command::Command, consumer::send_command, span::RawSpan, thread_id::get, SHARD_NUM};
+use std::{cell::Cell, sync::Arc};
 
 pub(crate) const DEFAULT_BATCH_SIZE: usize = 16384 / 16;
 
 thread_local! {
-    static SPAN_QUEUE: Rc<RefCell<SpanQueue>> = {
-        let mut queue = SpanQueue::new();
-
-        // perfetto specific operation.
-        // TODO: Can we put this logic elsewhere?
-        queue.push(thread_descriptor());
-
-        Rc::new(RefCell::new(queue))
-    };
-
     pub(crate) static THREAD_INITIALIZED: Cell<bool> = Cell::new(false);
 }
 
 pub(crate) static SPAN_QUEUE_STORE: Lazy<SpanQueueStore> = Lazy::new(|| {
     let mut store = SpanQueueStore::new();
-    for _ in 0..SHARD_NUM.load(std::sync::atomic::Ordering::Relaxed) {
+    let num_shards = SHARD_NUM.load(std::sync::atomic::Ordering::Relaxed);
+    for _ in 0..num_shards {
         store.register();
     }
     store
@@ -46,8 +30,7 @@ impl SpanQueueStore {
     }
 
     pub(crate) fn register(&mut self) {
-        let mut queue = SpanQueue::new();
-        queue.push(thread_descriptor());
+        let queue = SpanQueue::new();
         self.span_queues.push(Arc::new(Mutex::new(queue)));
     }
 
