@@ -81,7 +81,7 @@ impl GlobalSpanConsumer {
         }
     }
 
-    pub(crate) fn push_overwrite(&mut self, command: Command) {
+    fn push_overwrite(&mut self, command: Command) {
         self.command_buf
             .get_or_insert_with(|| RingBuffer::new(SHARD_NUM.load(Ordering::Relaxed) * 2))
             .push_overwrite(command);
