@@ -1,8 +1,8 @@
-use std::sync::OnceLock;
+use std::{io::Write, sync::OnceLock};
 
 use fastrace::{collector::Reporter, prelude::SpanRecord};
 use iai_callgrind::{library_benchmark, library_benchmark_group, main};
-use rt_trace::{config::Config, consumer::SpanConsumer, initialize, start};
+use rt_trace::{config::Config, consumer::SpanConsumer, initialize, span::RawSpan, start};
 
 #[library_benchmark]
 #[bench::first(args = (), setup = init_fastrace)]
@@ -55,7 +55,7 @@ fn init_rt_trace() {
     struct DummyReporter;
 
     impl SpanConsumer for DummyReporter {
-        fn consume(&mut self, _spans: &[rt_trace::span::RawSpan]) {}
+        fn consume(&mut self, _spans: &[RawSpan], _writer: &mut Box<&mut dyn Write>) {}
     }
 
     initialize(Config::default(), DummyReporter {});

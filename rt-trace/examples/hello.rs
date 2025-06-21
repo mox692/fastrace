@@ -1,6 +1,8 @@
 #![allow(unused)]
 #![allow(dead_code)]
 
+use std::fs::File;
+
 use rt_trace::{
     backend::perfetto::PerfettoReporter,
     config::Config,
@@ -15,7 +17,8 @@ fn main() {
 }
 
 fn single_thread() {
-    let consumer = PerfettoReporter::new("./single.log");
+    let mut file = File::create("./pftrace.log").expect("Failed to create log file");
+    let consumer = PerfettoReporter::new();
 
     initialize(Config::default(), consumer);
 
@@ -41,11 +44,12 @@ fn single_thread() {
 
     jh.join().unwrap();
 
-    flush();
+    flush(&mut file);
 }
 
 fn multi_thread() {
-    let consumer = PerfettoReporter::new("./single.log");
+    let mut file = File::create("./pftrace.log").expect("Failed to create log file");
+    let consumer = PerfettoReporter::new();
 
     initialize(Config::default(), consumer);
 
@@ -78,5 +82,5 @@ fn multi_thread() {
         handle.join().unwrap();
     }
 
-    flush();
+    flush(&mut file);
 }

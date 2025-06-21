@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 use std::fmt::Debug;
+use std::fs::File;
 use std::hash::Hash;
+use std::io::Write;
 use std::{
     sync::{Arc, Mutex},
     time::Duration,
@@ -18,7 +20,7 @@ struct TestConsumer {
 }
 
 impl SpanConsumer for TestConsumer {
-    fn consume(&mut self, spans: &[RawSpan]) {
+    fn consume(&mut self, spans: &[RawSpan], _writer: &mut Box<&mut dyn Write>) {
         let mut collect = self.collect.lock().unwrap();
         collect.extend_from_slice(spans);
     }
@@ -45,6 +47,7 @@ fn basic() {
     let (config, consumer, collect) = setup();
     let num_threads = 3;
     let mut handles = vec![];
+    let mut file = File::create("./test_basic.log").unwrap();
 
     initialize(config, consumer);
     start();
@@ -67,19 +70,10 @@ fn basic() {
         handle.join().unwrap();
     }
 
-    flush();
+    flush(&mut file);
 
+    // this consumer doesn't call drain_descriptors, so we wouldn't get any descriptors.
     let expected = vec![
-        Type::ProcessDiscriptor(ProcessDiscriptor {}),
-        Type::ThreadDiscriptor(crate::span::ThreadDiscriptor {
-            thread_name: "test-thread-0".to_string(),
-        }),
-        Type::ThreadDiscriptor(crate::span::ThreadDiscriptor {
-            thread_name: "test-thread-1".to_string(),
-        }),
-        Type::ThreadDiscriptor(crate::span::ThreadDiscriptor {
-            thread_name: "test-thread-2".to_string(),
-        }),
         Type::RunTask(RunTask {
             name: Some("task0".to_string()),
             ..Default::default()

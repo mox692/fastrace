@@ -62,7 +62,7 @@ pub enum Type {
     ProcessDiscriptor(ProcessDiscriptor),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RawSpan {
     pub(crate) typ: Type,
     pub(crate) thread_id: u64,

@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::sync::OnceLock;
 
 use criterion::criterion_group;
@@ -9,6 +10,7 @@ use rt_trace::config::Config;
 use rt_trace::consumer::SpanConsumer;
 use rt_trace::initialize;
 use rt_trace::span;
+use rt_trace::span::RawSpan;
 use rt_trace::span::RunTask;
 use rt_trace::start;
 
@@ -28,7 +30,7 @@ fn init_rt_trace() {
     struct DummyReporter;
 
     impl SpanConsumer for DummyReporter {
-        fn consume(&mut self, _spans: &[rt_trace::span::RawSpan]) {}
+        fn consume(&mut self, _spans: &[RawSpan], _writer: &mut Box<&mut dyn Write>) {}
     }
 
     initialize(Config::default(), DummyReporter {});

@@ -9,6 +9,7 @@ use crate::consumer::SpanConsumer;
 use crate::span::ProcessDiscriptor;
 use crate::span::RawSpan;
 use crate::span::ThreadDiscriptor;
+use crate::span_queue::drain_descriptors;
 use crate::span_queue::DEFAULT_BATCH_SIZE;
 use crate::utils::object_pool::Pool;
 use crate::utils::object_pool::Puller;
@@ -26,10 +27,22 @@ use perfetto_protos::{
     ProcessDescriptor, ThreadDescriptor, TracePacket, TrackDescriptor, TrackEvent,
 };
 use prost::Message;
-use std::{fs::File, io::Write, path::Path};
+use std::io::Write;
+
+#[inline]
+fn buf_size() -> usize {
+    // More precisely, it should be good enough to hold:
+    // DEFAULT_BATCH_SIZE * 2 + SHARD_NUM.load(Ordering::Relaxed) + 1
+    //
+    // DEFAULT_BATCH_SIZE * 2: normal spans(both start and end events)
+    // SHARD_NUM.load(Ordering::Relaxed): process and thread descriptors
+    // + 1: process descriptor
+
+    DEFAULT_BATCH_SIZE * 4
+}
 
 fn init() -> Vec<TracePacket> {
-    vec![TracePacket::default(); DEFAULT_BATCH_SIZE * 2]
+    vec![TracePacket::default(); buf_size()]
 }
 
 fn clear(_vec: &mut Vec<TracePacket>) {
@@ -56,15 +69,13 @@ impl Default for TracePackets {
 #[derive(Debug)]
 pub struct PerfettoReporter {
     pid: i32,
-    output: File,
 }
 
 impl PerfettoReporter {
     #[inline]
-    pub fn new(path: impl AsRef<Path>) -> Self {
+    pub fn new() -> Self {
         Self {
             pid: std::process::id() as i32,
-            output: File::create(path.as_ref()).expect("Failed to create output file"),
         }
     }
 }
@@ -181,7 +192,7 @@ impl Trace {
     }
 
     #[inline]
-    fn write(&mut self, output: &mut File, num_packets: usize) {
+    fn write<T: Write>(&mut self, output: &mut T, num_packets: usize) {
         // The next pooled object will be temporarily assigned to `self.inner` to avoid borrowing issues.
         let next = TracePackets::default();
         let current = std::mem::replace(&mut self.inner, next);
@@ -193,13 +204,13 @@ impl Trace {
 
         let mut trace = perfetto_protos::Trace { packet };
         // TODO: use pool
-        let mut buf = BytesMut::with_capacity(DEFAULT_BATCH_SIZE * 2);
+        let mut buf = BytesMut::with_capacity(buf_size());
         trace.encode(&mut buf).unwrap();
         output.write_all(&buf).unwrap();
         output.flush().unwrap();
 
         // SAFETY: the cap of vec is `DEFAULT_BATCH_SIZE * 2` and vec is initialized.
-        unsafe { trace.packet.set_len(DEFAULT_BATCH_SIZE * 2) };
+        unsafe { trace.packet.set_len(buf_size()) };
 
         // The original `TracePackets` is now stored in `self.inner`, and the temporary pooled object
         // will be dropped (injected to the pool again).
@@ -208,7 +219,7 @@ impl Trace {
 }
 
 impl SpanConsumer for PerfettoReporter {
-    fn consume(&mut self, spans: &[RawSpan]) {
+    fn consume(&mut self, spans: &[RawSpan], writer: &mut Box<&mut dyn Write>) {
         let mut trace = Trace::new();
 
         let pid = self.pid;
@@ -217,19 +228,37 @@ impl SpanConsumer for PerfettoReporter {
 
         let mut packets = trace.inner.0.into_inner();
         let mut num_packets = 0;
+        let descriptors = drain_descriptors();
+        for descriptor in descriptors {
+            // SAFETY: it is garantee that index is less that 1024 and packets have 1024 len
+            let packet = unsafe { packets.get_unchecked_mut(num_packets) };
+            match &descriptor.typ {
+                Type::ProcessDiscriptor(_) => {
+                    append_process_descriptor(packet, pid, descriptor.thread_id);
+                    packets.swap(0, num_packets);
+                    num_packets += 1;
+                }
+                Type::ThreadDiscriptor(d) => {
+                    append_thread_descriptor(packet, d, self.pid, descriptor.thread_id);
+                    packets.swap(0, num_packets);
+                    num_packets += 1;
+                }
+                _ => panic!(
+                    "Unexpected descriptor type: {:?}",
+                    descriptor.typ.type_name_string()
+                ),
+            };
+        }
+
         for span in spans {
             // SAFETY: it is garantee that index is less that 1024 and packets have 1024 len
             let packet = unsafe { packets.get_unchecked_mut(num_packets) };
             match &span.typ {
                 Type::ProcessDiscriptor(_) => {
-                    append_process_descriptor(packet, pid, span.thread_id);
-                    packets.swap(0, num_packets);
-                    num_packets += 1;
+                    panic!("Process descriptor should not be in spans")
                 }
-                Type::ThreadDiscriptor(d) => {
-                    append_thread_descriptor(packet, d, self.pid, span.thread_id);
-                    packets.swap(0, num_packets);
-                    num_packets += 1;
+                Type::ThreadDiscriptor(_d) => {
+                    panic!("Thread descriptor should not be in spans");
                 }
                 Type::RunTask(_) | Type::RuntimePark(_) => {
                     // Start event packet
@@ -275,7 +304,7 @@ impl SpanConsumer for PerfettoReporter {
         }
 
         trace.inner = TracePackets(Reusable::new(&*TRACE_PACKETS_POOL, packets));
-        trace.write(&mut self.output, num_packets);
+        trace.write(writer, num_packets);
     }
 }
 
