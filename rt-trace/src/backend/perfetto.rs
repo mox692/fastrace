@@ -27,7 +27,7 @@ use perfetto_protos::{
     ProcessDescriptor, ThreadDescriptor, TracePacket, TrackDescriptor, TrackEvent,
 };
 use prost::Message;
-use std::{fs::File, io::Write, path::Path};
+use std::io::Write;
 
 #[inline]
 fn buf_size() -> usize {
@@ -69,15 +69,13 @@ impl Default for TracePackets {
 #[derive(Debug)]
 pub struct PerfettoReporter {
     pid: i32,
-    output: File,
 }
 
 impl PerfettoReporter {
     #[inline]
-    pub fn new(path: impl AsRef<Path>) -> Self {
+    pub fn new() -> Self {
         Self {
             pid: std::process::id() as i32,
-            output: File::create(path.as_ref()).expect("Failed to create output file"),
         }
     }
 }
