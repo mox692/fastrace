@@ -2,6 +2,7 @@ use config::Config;
 use consumer::{SpanConsumer, GLOBAL_SPAN_CONSUMER};
 use span::{RawSpan, Span, Type};
 use std::{
+    io::Write,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     time::Duration,
 };
@@ -17,7 +18,7 @@ use fastant::Instant;
 
 use crate::{
     backend::perfetto::thread_descriptor,
-    span_queue::{with_span_queue, SPAN_QUEUE_STORE, THREAD_INITIALIZED},
+    span_queue::{add_descriptor, with_span_queue, SPAN_QUEUE_STORE, THREAD_INITIALIZED},
 };
 
 #[cfg(test)]
@@ -48,16 +49,7 @@ pub fn span(typ: Type) -> Span {
                 // Is this the first time this thread is creating a span?
                 if !current.get() {
                     // If so, we need to initialize the thread-local span queue.
-                    {
-                        let mut guard = span_queue.lock();
-                        guard.push(thread_descriptor());
-                        guard.flush();
-                    }
-                    {
-                        let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock();
-                        global_consumer.collect_and_push_commands();
-                        global_consumer.flush();
-                    }
+                    add_descriptor(thread_descriptor());
 
                     current.replace(true);
                 }
@@ -131,7 +123,7 @@ pub fn initialize(config: Config, consumer: impl SpanConsumer + 'static) {
 /// flush spans held in `SpanQueue`. You must drop the `SpanQueue` for each
 /// thread and collect the spans into the consumer thread *before* calling this function.
 #[inline]
-pub fn flush() {
+pub fn flush<W: Write>(writer: &mut W) {
     // 1. flush the local span queue.
     stop();
     let len = SPAN_QUEUE_STORE.len();
@@ -144,5 +136,5 @@ pub fn flush() {
     // 2. flush the global span queue.
     let mut global_consumer = GLOBAL_SPAN_CONSUMER.lock();
     global_consumer.collect_and_push_commands();
-    global_consumer.flush();
+    global_consumer.flush(&mut Box::new(writer));
 }

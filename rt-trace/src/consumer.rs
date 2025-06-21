@@ -4,6 +4,7 @@ use crate::{
     backend::perfetto::process_descriptor,
     command::Command,
     span::RawSpan,
+    span_queue::add_descriptor,
     utils::{
         ring_buffer::RingBuffer,
         spsc::{bounded, Receiver, Sender},
@@ -12,6 +13,7 @@ use crate::{
 };
 use std::{
     cell::UnsafeCell,
+    io::Write,
     sync::atomic::{AtomicBool, Ordering},
 };
 
@@ -19,7 +21,7 @@ use std::{
 // TODO: Do we need Send + 'static bound?
 pub trait SpanConsumer: Send {
     // TODO: Can spans be abstracted?
-    fn consume(&mut self, spans: &[RawSpan]);
+    fn consume(&mut self, spans: &[RawSpan], writer: &mut Box<&mut dyn Write>);
 }
 
 static SPSC_RXS: Mutex<Vec<Receiver<Command>>> = Mutex::new(Vec::new());
@@ -87,15 +89,15 @@ impl GlobalSpanConsumer {
             .push_overwrite(command);
     }
 
-    pub(crate) fn flush(&mut self) {
-        let Some(consumer) = &mut self.consumer else {
+    pub(crate) fn flush(&mut self, writer: &mut Box<&mut dyn Write>) {
+        let Some(_consumer) = &mut self.consumer else {
             panic!("Consumer should be set");
         };
 
         // Required for perfetto tracing.
         // TODO: Can we put this logic elsewhere?
         if !flushed_once() {
-            consumer.as_mut().consume(&[process_descriptor()]);
+            add_descriptor(process_descriptor());
             set_flushed_once(true);
         }
 
@@ -111,7 +113,7 @@ impl GlobalSpanConsumer {
         };
 
         for spans in &spans {
-            self.consumer.as_mut().unwrap().consume(spans);
+            self.consumer.as_mut().unwrap().consume(spans, writer);
         }
     }
 }

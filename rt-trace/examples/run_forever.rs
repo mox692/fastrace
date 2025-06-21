@@ -64,7 +64,8 @@ fn main() {
         handle.join().unwrap();
     }
 
-    flush();
+    let mut file = std::fs::File::create("./single.log").unwrap();
+    flush(&mut file);
 
     println!("flush done!");
 }

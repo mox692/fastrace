@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 use parking_lot::Mutex;
 
 use crate::{command::Command, consumer::send_command, span::RawSpan, thread_id::get, SHARD_NUM};
-use std::{cell::Cell, sync::Arc};
+use std::{cell::Cell, collections::HashMap, sync::Arc};
 
 pub(crate) const DEFAULT_BATCH_SIZE: usize = 16384 / 16;
 
@@ -18,6 +18,34 @@ pub(crate) static SPAN_QUEUE_STORE: Lazy<SpanQueueStore> = Lazy::new(|| {
     }
     store
 });
+
+pub(crate) static DESCRIPTORS: Lazy<Arc<Mutex<HashMap<RawSpan, bool>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
+
+pub(crate) fn add_descriptor(span: RawSpan) {
+    let mut guard = DESCRIPTORS.lock();
+
+    if guard.get(&span).is_some() {
+        panic!("Descriptor already exists for span: {:?}", span);
+    }
+
+    guard.insert(span, false);
+}
+pub(crate) fn drain_descriptors() -> Vec<RawSpan> {
+    let mut descriptors = DESCRIPTORS.lock();
+
+    descriptors
+        .iter_mut()
+        .filter_map(|(span, flushed)| {
+            if !*flushed {
+                *flushed = true;
+                Some(span.clone())
+            } else {
+                None
+            }
+        })
+        .collect()
+}
 
 pub(crate) struct SpanQueueStore {
     span_queues: Vec<Arc<Mutex<SpanQueue>>>,
