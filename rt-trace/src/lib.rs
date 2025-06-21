@@ -25,7 +25,7 @@ use crate::{
 mod tests;
 
 /// This should be set at the initialization of the library.
-pub(crate) static SHARD_NUM: AtomicUsize = AtomicUsize::new(0);
+pub(crate) static SHARD_NUM: AtomicUsize = AtomicUsize::new(DEFAULT_NUM_SHARD);
 
 /// Whether tracing is enabled or not.
 static ENABLED: AtomicBool = AtomicBool::new(false);
