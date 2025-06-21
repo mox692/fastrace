@@ -16,7 +16,7 @@ fn bench_rt_trace(_: ()) {
 }
 
 fn init_rt_trace() {
-    let perfetto_reporter = PerfettoReporter::new("fastrace_perfetto_test");
+    let perfetto_reporter = PerfettoReporter::new();
     initialize(Config::default(), perfetto_reporter);
     start();
 }

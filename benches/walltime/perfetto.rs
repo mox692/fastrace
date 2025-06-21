@@ -9,7 +9,7 @@ use rt_trace::span::RunTask;
 use rt_trace::start;
 
 fn init_rt_trace_perfetto() {
-    let perfetto_reporter = PerfettoReporter::new("fastrace_perfetto_test");
+    let perfetto_reporter = PerfettoReporter::new();
     initialize(Config::default(), perfetto_reporter);
     start();
 }
