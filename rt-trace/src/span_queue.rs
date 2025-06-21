@@ -29,7 +29,8 @@ thread_local! {
 
 pub(crate) static SPAN_QUEUE_STORE: Lazy<SpanQueueStore> = Lazy::new(|| {
     let mut store = SpanQueueStore::new();
-    for _ in 0..SHARD_NUM.load(std::sync::atomic::Ordering::Relaxed) {
+    let num_shards = SHARD_NUM.load(std::sync::atomic::Ordering::Relaxed);
+    for _ in 0..num_shards {
         store.register();
     }
     store
@@ -46,8 +47,7 @@ impl SpanQueueStore {
     }
 
     pub(crate) fn register(&mut self) {
-        let mut queue = SpanQueue::new();
-        queue.push(thread_descriptor());
+        let queue = SpanQueue::new();
         self.span_queues.push(Arc::new(Mutex::new(queue)));
     }
 
