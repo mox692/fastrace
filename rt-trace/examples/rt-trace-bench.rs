@@ -16,7 +16,7 @@ fn init_rt_trace() {
     struct DummyConsumer;
 
     impl SpanConsumer for DummyConsumer {
-        fn consume(&mut self, spans: &[RawSpan], writer: &mut Box<&mut dyn Write>) {}
+        fn consume(&mut self, _spans: &[RawSpan], _writer: &mut Box<&mut dyn Write>) {}
     }
     let consumer = DummyConsumer;
     initialize(Config::default(), consumer);

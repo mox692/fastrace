@@ -12,7 +12,7 @@ use crate::{
     config::Config,
     consumer::SpanConsumer,
     flush, initialize, span as mk_span,
-    span::{ProcessDiscriptor, RawSpan, RunTask, Type},
+    span::{RawSpan, RunTask, Type},
     start,
 };
 struct TestConsumer {
