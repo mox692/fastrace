@@ -13,7 +13,7 @@ use rt_trace::{
 
 fn main() {
     let mut all_tx = vec![];
-    let consumer = PerfettoReporter::new("./single.log");
+    let consumer = PerfettoReporter::new();
 
     initialize(Config::default(), consumer);
     start();
