@@ -100,16 +100,19 @@ impl GlobalSpanConsumer {
             set_flushed_once(true);
         }
 
-        let spans: Vec<RawSpan> = self
-            .command_buf
-            .get_or_insert_with(|| RingBuffer::new(SHARD_NUM.load(Ordering::Relaxed) * 2))
-            .drain()
-            .into_iter()
-            .flat_map(|cmd| match cmd {
-                Command::SendSpans(spans) => spans,
-            })
-            .collect();
+        let Some(spans) = self.command_buf.as_mut().map(|buf| {
+            buf.drain()
+                .into_iter()
+                .map(|cmd| match cmd {
+                    Command::SendSpans(spans) => spans,
+                })
+                .collect::<Vec<_>>()
+        }) else {
+            return;
+        };
 
-        self.consumer.as_mut().unwrap().consume(&spans);
+        for spans in &spans {
+            self.consumer.as_mut().unwrap().consume(spans);
+        }
     }
 }
