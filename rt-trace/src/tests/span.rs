@@ -72,17 +72,8 @@ fn basic() {
 
     flush(&mut file);
 
+    // this consumer doesn't call drain_descriptors, so we wouldn't get any descriptors.
     let expected = vec![
-        Type::ProcessDiscriptor(ProcessDiscriptor {}),
-        Type::ThreadDiscriptor(crate::span::ThreadDiscriptor {
-            thread_name: "test-thread-0".to_string(),
-        }),
-        Type::ThreadDiscriptor(crate::span::ThreadDiscriptor {
-            thread_name: "test-thread-1".to_string(),
-        }),
-        Type::ThreadDiscriptor(crate::span::ThreadDiscriptor {
-            thread_name: "test-thread-2".to_string(),
-        }),
         Type::RunTask(RunTask {
             name: Some("task0".to_string()),
             ..Default::default()
