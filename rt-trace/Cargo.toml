@@ -10,7 +10,8 @@ readme = "README.md"
 rust-version = "1.70"
 
 [dependencies]
-fastant = "0.1"
+# TODO: use upstream once https://github.com/fast/fastant/issues/8 is resolved.
+fastant = { git = "https://github.com/mox692/fastant", branch = "fix_build_x86" }
 prost = { version = "=0.13.2" }
 prost-derive = "=0.13.2"
 parking_lot = "0.12.4"
