@@ -22,6 +22,8 @@ pub struct RuntimeTerminate {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RuntimePark {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct RuntimeDriver {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ThreadDiscriptor {
     pub(crate) thread_name: String,
 }
@@ -37,6 +39,7 @@ impl Type {
             &Type::RuntimeStart(_) => "runtime_start",
             &Type::RuntimeTerminate(_) => "runtime_terminate",
             &Type::RuntimePark(_) => "runtime_park",
+            &Type::RuntimeDriver(_) => "runtime_driver",
             &Type::ThreadDiscriptor(_) => "thread_discriptor",
             &Type::ProcessDiscriptor(_) => "process_discriptor",
         }
@@ -57,6 +60,7 @@ pub enum Type {
     RuntimeStart(RuntimeStart),
     RuntimeTerminate(RuntimeTerminate),
     RuntimePark(RuntimePark),
+    RuntimeDriver(RuntimeDriver),
     // perfetto specific
     ThreadDiscriptor(ThreadDiscriptor),
     ProcessDiscriptor(ProcessDiscriptor),

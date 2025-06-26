@@ -478,13 +478,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "fastant"
+version = "0.1.10"
+source = "git+https://github.com/mox692/fastant?branch=fix_build_x86#0b9c0b58b65c951d0d576520ea459e2df64fa56a"
+dependencies = [
+ "small_ctor",
+ "web-time",
+]
+
+[[package]]
 name = "fastrace"
 version = "0.7.9"
 dependencies = [
  "async-trait",
  "crossbeam",
  "divan",
- "fastant",
+ "fastant 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "fastrace",
  "fastrace-macro",
  "fastrace-opentelemetry",
@@ -1943,7 +1952,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytes",
- "fastant",
+ "fastant 0.1.10 (git+https://github.com/mox692/fastant?branch=fix_build_x86)",
  "libc",
  "once_cell",
  "parking_lot",

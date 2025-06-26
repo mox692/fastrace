@@ -260,7 +260,10 @@ impl SpanConsumer for PerfettoReporter {
                 Type::ThreadDiscriptor(_d) => {
                     panic!("Thread descriptor should not be in spans");
                 }
-                Type::RunTask(_) | Type::RuntimePark(_) => {
+                Type::RunTask(_)
+                | Type::RuntimePark(_)
+                | Type::RuntimeDriver(_)
+                | Type::RuntimeTerminate(_) => {
                     // Start event packet
                     let debug_annotations = create_debug_annotations();
                     let start_event = create_track_event(
@@ -295,9 +298,6 @@ impl SpanConsumer for PerfettoReporter {
                     num_packets += 1;
                 }
                 Type::RuntimeStart(_) => {
-                    unimplemented!()
-                }
-                Type::RuntimeTerminate(_) => {
                     unimplemented!()
                 }
             };
