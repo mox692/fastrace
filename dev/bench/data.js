@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1750930361754,
+  "lastUpdate": 1750937701113,
   "repoUrl": "https://github.com/mox692/fastrace",
   "entries": {
     "Rust Benchmark": [
@@ -4505,6 +4505,84 @@ window.BENCHMARK_DATA = {
             "name": "compare/rt_trace_perfetto/10000",
             "value": 502106,
             "range": "± 19755",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "moymoymox@gmail.com",
+            "name": "Motoyuki Kimura",
+            "username": "mox692"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "9db6c10e739799f29005de04e5452b54d67ae7c2",
+          "message": "Port monitor changes (#19)",
+          "timestamp": "2025-06-26T20:30:09+09:00",
+          "tree_id": "6b170f12276778e6373e4c2c06135e3ef8896e50",
+          "url": "https://github.com/mox692/fastrace/commit/9db6c10e739799f29005de04e5452b54d67ae7c2"
+        },
+        "date": 1750937700568,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "compare/fastrace/10000",
+            "value": 270801,
+            "range": "± 24398",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/10000",
+            "value": 489804,
+            "range": "± 3883",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/100000",
+            "value": 2866199,
+            "range": "± 112046",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/100000",
+            "value": 4950611,
+            "range": "± 47922",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/fastrace/1000000",
+            "value": 28810676,
+            "range": "± 763282",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace/1000000",
+            "value": 48976987,
+            "range": "± 189901",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace_perfetto/100",
+            "value": 5105,
+            "range": "± 515",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace_perfetto/1000",
+            "value": 48988,
+            "range": "± 1693",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "compare/rt_trace_perfetto/10000",
+            "value": 489898,
+            "range": "± 40728",
             "unit": "ns/iter"
           }
         ]
